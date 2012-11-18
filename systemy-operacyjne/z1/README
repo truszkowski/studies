@@ -1,0 +1,167 @@
+0. Readme
+
+1. Skrypt monitor
+
+	1.1 Uruchamianie 
+	
+			Skrypt uruchamiany bez opcji. W razie niepowodzenia wyswietla
+		na stdout stosowny komunikat. Uruchamiamy na systemach z SYSTEMS,
+		jesli przez pomylke bedziemy chcieli wlaczyc na innym systemie
+		monitor to wykryje. Uruchamiamy recznie monitory kolejno na 
+		systemach z SYSTEMS(mozna tez i w dowolnej kolejnosci).
+	
+	1.2 Skrypt a pliki konfiguracyjne
+	
+			Skrypt po uruchomieniu wczytuje konfiguracje z `~/.mprc' zgodna 
+		ze specyfikacja zadania. W przypadku wykrycia jakis niezgodnosci
+		skrypt konczy prace zwracajac odpowiedni komentarz na stdout.
+		Ponadto skrypt, sprawdza czy ma dostep do pliku z logami 
+		`~/monitor.log'. Jesli wykryje, ze dziwnym trafem nie ma dostepu
+		do tego pliku informuje o tym na standartowym wyjsciu. 
+		Brak dostepu do tego pliku oznacza, ze monitory na roznych 
+		maszynach nie moga sie komunikowac. To w tym pliku znajda sie
+		informacje, ze program na jakiejs maszynie zakonczyl dzialanie,
+		ze jakis monitor zakonczyl prace, itd...
+		Aby logi byly istotnie logami doklejam tez date zdarzenia.
+		
+	1.3 Przechowywane dane
+
+		zmienne:
+		 $basesystems - lista systemow
+		 $activesys   - tablica, mowi ktory z systemow jest aktywny
+		 $idsystems   - numer systemu(jedynie dla ulatwienia)
+		 $busy        - aktywny monitor
+		 $process     - nazwa programu jaki ma byc monitorowany
+		 $arglist     - lista argumentow dla monitorowanego programu
+		 $pause       - czas co jaki monitory sprawdzaja dane
+		 $line        - numer ostatnio rozparzonego logu w `~/monitor.log'
+		 $failsys     - kto mial ile bledow wykonan
+		 $faillimit   - limit bledow wykonan	
+		 $skips       - ile komunikatow musze ominac (JOIN)
+		
+		funkcje:
+		 cleanup()         - czyszczenie
+		 prepare()         - przygotowanie do startu
+		 loadprocess()     - wczyt PROCESS
+		 loadsystems()     - wczyt SYSTEMS
+		 loadtime()        - wczyt TIME
+		 sendmsg()         - wyslanie komunikatu
+		 getmesseges()     - odbior komunikatow
+		 checkprocess()    - sprawdzenie czy dziala program
+		 executeprocess()  - wykonaj program
+		 deletesys()       - usun system
+		 insertsys()       - dodaj system
+		 nextbusy()        - przelacz monitorowanie na nastepnego 
+		 clearfails()      - czyszczenie bledow wykonan
+		 nextfail()        - blad wykanania 
+		
+	1.4 Komunikacja miedzy monitorami
+		
+			Do komunikacji miedzy monitorami sluzy plik, `~/monitor.log'.
+		Mozliwe w nim wpisy to:
+		
+		  JOIN:$nadawca:...
+		  FREE:$nadawca:...
+		  BUSY:$nadawca:...
+		  NEXT:$nadawca:...
+		  FAIL:$nadawca:$kto:$ile:...
+		  RUNN:$nadawca:...
+			DONE:$nadawca:$nrlinii:...
+		
+			Kazdy z monitorow, powyzsze wpisy rozpatruje dopiero gdy sam
+		je odczyta w pliku. Gwarantuje to, ze kazdy z monitorow bedzie
+		wykonywal instrukcje z logow w dokladnie takiej samej kolejnosci 
+		jak reszta. 
+		
+		JOIN: 
+		  Nadawca tego komunikatu, mowi innym, ze dolacza sie do siatki
+		  monitorow (ale musi byc na SYSTEMS!),
+			
+		FREE:
+		  Nadawca informuje, ze zakonczyl prace (oraz, ze nie dzialal u 
+		  niego program,
+		
+		BUSY:
+		  Nadawca informuje, ze zakonczyl prace i monitorowal program,
+		
+		NEXT:
+		  Program u nadawcy tego komunikatu zakonczyl dzialanie,
+		
+		FAIL:
+		  Blad wykonania programu u nadawcy, dodatkowo z informacja
+			ktory to u niego blad wykonania,
+			
+		RUNN:
+		  Nadawca probowal uruchomic u siebie jeszcze jeden monitor.
+			
+		DONE:
+			Tutaj zakonczyly prace monitory, od tej linni beda wczytywac
+			dane nastepne monitory.
+		
+	1.4 Ciag operacji monitora
+
+			Monitor po wczytaniu konfiguracji, zalozmy pomyslnym, przechodzi do 
+		glownej petli skryptu. Tam odczekuje PAUSE czasu i sprawdza czy cos
+		nowego sie nie pojawilo w `~/monitor.log'. Jak tak to rozpatruje
+		wszystkie nowe komunikaty wg kolejnosci ich przyjscia. Wazne, ze 
+		ta kolejnosc bedzie taka sama u wszystkich monitorow. 
+			Pierwsze wpisy w `~/monitor.log' to JOIN-y. Program uruchamia ten ktorego
+		jest pierwszy wpis JOIN. Stad jesli zaspi pierwszy monitor z listy 
+		SYSTEMS to jakis inny monitor zacznie monitorowac program (i tylko on).
+		Zmienna $busy jest ustawiana na wlasnie nadawce pierwszego JOIN'a.
+		W miare uplywu czasu w pliku moga sie pojawic wpisy NEXT, BUSY, FAIL, 
+		FREE a takze JOIN. Wazne jest by sprawdzac czy aby nie trzeba uruchomic 
+		programu przy NEXT, FAIL i BUSY, co oczywiste, ale tez i przy FREE. 
+		Moze sie bowiem zdarzyc, ze nastepnik zaspal i w miedzyczasie zostal
+		zabity. Wtedy jeslibysmy nie prawdzali czy aby nie nasza kolej 
+		doszloby do zdarzenia, ze nigdzie nie pracuje program! 
+			Wpis DONE, nie zostanie wczytany, poniewaz jest on ostatnim wpisem 
+		i stanowi "separator" miedzy kolejnymi sesjami monitorow. Tak tez wpis 
+		RUNN to tylko informacja, ze ktos probowal uruchomic dwa monitory na 
+		jednym systemie. Gdy nadejdzie sygnal konca pracy, monitor dodaje do 
+		logow wpis o swoim wyjsciu. Musi jednak wczytac wszystkie linnie, az 
+		do swojego w/w wpisu. Koniecznym jest aby sprawdzil czy nie jest ostatnim 
+		pracujacym monitorem i czy nie musi posprzatac. 
+			W przypadku $faillimit serii bledow wykonan, monitory koncza prace. W
+		miedzy czasie moga sie dolaczac/odlaczac monitory (JOIN i FREE). Jesli
+		nadejdzie BUSY lub NEXT kasowane sa zarejestrowane bledy wykonan. 
+			Nalezy tez powiedziec, ze gdy monitor jest dodawany do systemu na 
+		nowo to on wczytuje wszystkie poprzednie komunikaty ale dopoki nie 
+		wczyta ostatniego swojego JOIN'a (czyli obecnego wejscia) jedynie 
+		symuluje co sie dzialo.
+		
+
+2. Program watchfs
+
+	2.1 Uruchamianie
+		
+		Uruchamiamy: 
+		
+		  user@host ~$ watchfs <plik> <czas>
+		
+		Program nie dysponuje zadnymi innymi opcjami.
+
+	2.2 Dzialanie
+		
+		Program w niskonczonej petli sprawdza co <czas> sekund zajetosc systemu 
+		plikow gdzie jest <plik>. W razie niepowodzenia zwraca na standartowe 
+		wyjscie komunikat. Komunikat moze dotyczyc niemoznosci otwarzenia pliku 
+		z logami `~/watchfs.log', bledem zapisu czy blednym argumentem <plik>.
+
+3. Pakiet rpm
+
+	3.1 Pakiet zawiera:
+	
+		monitor          - skrypt monitor
+		watchfs          - program watchfs
+		monitor.1        - man do monitor
+		watchfs.8        - man do watchfs
+		Makefile         - makefile dla watchfs
+
+	3.2 Uwaga!
+	
+		W domu posiadam dystrybucje slackware, ma ona zainstalowany rpm
+		lecz nie jest to domyslny zarzadca pakietow. Stad, nie moglem sobie
+		pozwolic na uwzglednianie zaleznosci (czyli instalawalem:`rpm -i --nodeps').
+		Chocby o `/bin/bash' moj zarzadca rpm-ow nic nie wie.
+

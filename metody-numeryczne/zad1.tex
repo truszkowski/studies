@@ -1,0 +1,73 @@
+\documentclass[12pt,a4paper,twoside]{article}
+\RequirePackage[T1]{fontenc}
+\RequirePackage{times}
+\RequirePackage[latin2]{inputenc} 
+\RequirePackage[polish]{babel}
+\RequirePackage{comment} 
+\RequirePackage{a4wide} 
+\RequirePackage{longtable}
+\RequirePackage{multicol} 
+\RequirePackage{fancyhdr}
+\RequirePackage{exscale}
+\RequirePackage{verbatim}
+\RequirePackage{amsmath}
+\RequirePackage{url}
+\RequirePackage[dvips,dvipdf]{graphicx}
+\author{Piotr Truszkowski}
+\title{Metody numeryczne --- zadanie 1 (w octave)}
+
+\begin{document}
+
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0.5pt}
+\renewcommand{\footrulewidth}{0pt}
+\addtolength{\headheight}{0.5pt}
+\lhead[\emph{Piotr Truszkowski}]{\emph{Piotr Truszkowski}}
+\rhead[\thepage]{\thepage}
+
+\section*{Zadanie 1}
+
+Funkcja $f(x) = \sqrt{x^{2}+2} + x - 1 $ osi±ga miejsce zerowe $x^{*} = -0.5$. Poni¿ej jej wykres.
+
+\begin{figure}[ht]
+\begin{center}
+\includegraphics[scale=0.5]{wykres_f.eps}\emph{\caption{wykres badanej funkcji $ f(x) $}}
+\end{center}
+\end{figure}
+
+Metody iteracyjne (Newtona, Steffensena) startuj± od punktu $x_{1} = 3$. 
+W przypadku bisekcji pod uwagê biorê przedzia³ $(-3, +3)$. 
+Dla metody siecznych za $x_{1}$ biorê $3$ a za $x_{2}$ biorê $2.9$.
+Zastanówmy siê jak powinien wygl±daæ wykres b³êdów powy¿szych metod.
+Pochodna $f(x^{*})$ wynosi $f'(x^{*}) = x^{*} / \sqrt{x^{*2}+2} + 1 = 4/3 > 0$.
+St±d metoda Newtona jest zbie¿na kwadratowo. Bisekcja jest zbie¿na 
+liniowo i rzeczywi¶cie bêdzie zbiegaæ do miejsca zerowego ($-0.5$ jest miedzy $-3$ a $3$).
+Oczekiwaæ te¿ bêdziemy, ze metoda Steffensena bêdzie zbie¿na kwadratowo 
+a siecznych ponad liniowo ($p = (1+\sqrt{5})/2 $).
+\\
+Dalej przedstawiam wykresy dla 10 iteracji. Nie by³o sensu iterowaæ 
+dalej gdy¿ to co istotne widaæ ju¿ dla 10. Same wyniki dla metod 
+kwadratowo zbie¿nych s± ju¿ obliczone z dok³adno¶ci± rzêdu 
+$10^{-16}$, czyli na granicy dok³adno¶ci arytmetyki $fl$.
+
+\newpage
+
+\begin{figure}[h]
+\includegraphics[scale=0.5]{wykres_x.eps}
+\includegraphics[scale=0.5]{wykres_b.eps}
+\end{figure}
+
+Na wykresach widaæ, ¿e metody Newtona i Steffensena zbli¿aj± siê 
+do $-0.5$ najszybciej. Nastêpnie zbiega metoda siecznych (zbie¿no¶æ 
+nad liniowa). Najgorzej wypada metoda bisekcji (zbie¿na liniowo). 
+
+\begin{figure}[h]
+\includegraphics[scale=0.6]{wyniki.eps}
+\end{figure}
+
+Powy¿ej ,,dok³adne'' b³êdy dla 10 iteracji. Dla metody Steffensena widzimy, ¿e
+wyst±pi³o dzielenie przez $0$. Oznacza to, ¿e $f(x_{9}) = f(x_{9} + f(x_{9})) = x^{*}$
+(wed³ug przeliczeñ komputera oczywi¶cie).
+
+\end{document}

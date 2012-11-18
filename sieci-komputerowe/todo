@@ -1,0 +1,10 @@
+klasy_pobieranie:
+	usun_dsk();
+
+proc_serwer:
+	komunikat();
+	brk???();
+	
+watki_fragmenty:
+	jw.
+	

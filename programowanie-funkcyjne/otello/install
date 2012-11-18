@@ -1,0 +1,33 @@
+#!/bin/bash
+
+ifdone() {
+	if [ $1 -eq 0 ] 
+		then echo -e "  *$2\t\t\t\t[  OK  ]"
+		else echo -e "  *$2\t\t\t\t[FAILED]"
+	fi
+}
+
+cat def.ml \
+	board.mli ai.mli gui.mli board_game.mli \
+	board.ml ai.ml gui.ml board_game.ml game.ml > debug.ml
+cat debug.ml othello.ml  > tmp1.ml
+cat debug.ml lessons.ml  > tmp2.ml
+cat debug.ml training.ml > tmp3.ml
+
+echo -e "Compiling..."
+
+ocamlc.opt -custom -o othello  graphics.cma tmp1.ml 2>  error.log
+ifdone $? "othello "
+
+ocamlc.opt -custom -o lessons  graphics.cma tmp2.ml 2> /dev/null
+ifdone $? "lessons "
+
+ocamlc.opt -custom -o training graphics.cma tmp3.ml 2> /dev/null
+ifdone $? "training"
+
+rm -f tmp1.* tmp2.* tmp3.*
+
+if [ -s error.log ] 
+	then echo -e "\n***\tCaught some errors/warnings! (details: error.log)\n"
+	else rm -f error.log debug.ml ; echo -e "Finished\n\n\tHave fun!\n"
+fi

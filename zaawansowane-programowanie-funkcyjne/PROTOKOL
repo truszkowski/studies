@@ -1,0 +1,78 @@
+Rejestracja uzytkownika:
+>>
+"Request=\Register\ Nick=\uzytkownik\ Password=\***\ "
+<<
+"Reply=\Ok\ "
+"Reply=\Already\ "
+"Reply=\Invalid\ "
+
+Wyrejestrowanie uzytkownika:
+>>
+"Request=\Unregister\ Nick=\uzytkownik\ Password=\***\ "
+<<
+"Reply=\Ok\ "
+"Reply=\Notfound\ "
+"Reply=\Access\ "
+"Reply=\Invalid\ "
+
+Logowanie sie do systemu:
+>>
+"Request=\On\ Nick=\uzytkownik\ Password=\***\ "
+<<
+"Reply=\Ok\ Session=\...\ "
+"Reply=\Notfound\ "
+"Reply=\Access\ "
+"Reply=\Invalid\ "
+"Reply=\Already\ "
+
+Wylogowanie sie z systemu:
+>>
+"Request=\Off\ Nick=\uzytkownik\ Session=\***\ "
+<<
+"Reply=\Ok\ "
+"Reply=\Notfound\ "
+"Reply=\Access\ "
+"Reply=\Invalid\ "
+
+Zmiana swojego opisu:
+>>
+"Request=\Ping\ Nick=\uzytkownik\ Description=\opis\ Session=\...\ "
+<<
+"Reply=\Ok\ "
+"Reply=\Access\ "
+"Reply=\Invalid\ "
+"Reply=\Timeout\ "
+
+Zapytanie o innego uzytkownika: 
+>>
+"Request=\Ask\ Nick=\uzytkownik\ Session=\...\ About=\oniegopytam\ "
+<<
+"Reply=\Ok\ Nick=\oniegopytam\ Description=\opis\ Available=\true|false\ "
+"Reply=\Access\ "
+"Reply=\Notfound\ "
+"Reply=\Invalid\ "
+"Reply=\Timeout\ "
+
+Wyslanie wiadomosci do innego uzytkownika:
+>>
+"Request=\Chat\ From=\uzytkownik1\ To=\uzytkownik2\ Message=\tresc wiadomosci\ Session=\...\ "
+<<
+"Reply=\Ok\ Id=\identyfikator\ "
+"Reply=\Access\ "
+"Reply=\Invalid\ "
+"Reply=\Timeout\ "
+
+Odebranie wiadomosci od innego uzytkownika:
+>>
+"Request=\Receive\ Nick=\uzytkownik\ Session=\...\ "
+<<
+"Reply=\Ok\ Size=\ile nowych wiadomosci\ "
+"Reply=\Access\ "
+"Reply=\Timeout\ "
+"Reply=\Invalid\ "
+"Reply=\Notfound\ "
+>>[serwer wysyla wszystkie wiadomosci]
+"Request=\Chat\ Id=\identyfikator\ From=\uzytkownik2\ To=\uzytkownik1\ Message=\tresc wiadomosci\ Time=\czas w sek\ "
+<<[klient odsyla odpowiedz]
+"Reply=\Ok\ "
+

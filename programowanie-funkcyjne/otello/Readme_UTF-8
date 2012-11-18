@@ -1,0 +1,100 @@
+(*** O ***)
+
+  Gra othello, napisana w jezyku ocaml.
+
+(*** Instalacja/Uzycie ***)
+
+	Żródła:
+Linux & Windows - Othello.src.tar.bz2
+
+	Binaria:
+Linux - Othello.linux-bin.tar.bz2
+Windows - Othello.windows-bin.rar
+
+  Instalacja pod Linuxem:
+linux$ ./install 
+
+  a pod Windowsem:
+windows> install.cmd
+
+  Uruchomienie gry:
+linux$ ./othello
+windows> othello.exe
+
+  Uczenie na podstawie przygotowanych lekcji:
+linux$ ./lessons <plik_wynikowy> <plik_z_lekcjami> <liczba_iteracji>
+windows> lessons.exe <plik_wynikowy> <plik_z_lekcjami> <liczba_iteracji>
+
+  Uczenie na postawie gier komputera z komputerem:
+linux$ ./training <plik_wynikowy> <liczba_gier_do_rozegrania>
+windows> training.exe <plik_wynikowy> <liczba_gier_do_rozegrania>
+
+  Klawiszologia:
+'e' -> wyjście
+'n' -> od nowa
+'b' -> cofnij
+'r' -> poddanie się
+
+(*** Zaleznosci modulow/funktorow ***)
+
+BGAME_BOARD : _
+BGAME_AI : BGAME_BOARD
+BGAME_GUI : BGAME_BOARD
+BOARD_GAME : BGAME_BOARD, BGAME_AI, BGAME_GUI
+
+(*** Co, gdzie, jak... ***)
+
+def.ml:
+
+	  Definicje używanych wyjątków i typów.
+
+*.mli:
+
+		Sygnatury modułow/funktorów.
+
+board_game.ml:
+
+		Tutaj znajduje sie funktor gry planszowej(BOARD_GAME). Jego zadaniem jest 
+	mozliwie ogolne podejscie do gry. I tak korzysta z modulu BGAME_BOARD, 
+	gdzie maja byc zdefiniowane podstawowe operacje na planszy. Korzysta z 
+	modulu inteligencji(BGAME_AI) oraz interfejsu uzytkownika(BGAME_GUI)
+	Funktor gry planszowej generalnie dba o przebieg gry - czy ruch ma
+	komputer czy czlowiek i w zaleznosci od tego uruchamia odpowiednie funkcje 
+	z odpowiednich modulow. Ponadto, co istotne, funktor dysponuje własnym, 
+	uniweralnym zestawem funkcji odpowiedzialnych za sztuczną inteligencje. 
+	Ma wbudowana procedurę alfabeta-obciecia. Oceny pozycji dokonuje analizujac 
+	charakterystyke planszy(samą charakterystyke nadaje modul BGAME_AI, funktor 
+	BOARD_GAME ją przetwarza). Za pomoca 	regresji liniowej potrafi równiez 
+	ulepszać istniejące wagi(z przyrzadzonych lekcji badz samych tylko gier 
+	gracza komputerowego).
+
+board.ml:
+
+	  Tutaj znajduje sie reprezentacja planszy - implementacje funkcji
+	na niej jak - move, pass, legal, startBoard, ...
+
+ai.ml:
+
+		Modul sztucznej inteligencji. Jest odpowiedzialny za operacje takie jak 
+	wlasciwe zdefiniowanie cech, zdefiniowanie tablicy haszujacej, w ktorej to
+	wspomniane cechy bylyby przechowywane. Z tutaj zdefiniowanej charakterystyki 
+	korzystaja "wysokopoziomowe" algorytmy z funktora BOARD_GAME.
+
+gui.ml:
+
+	  Tutaj sa zaimplementowane funkcje do obslugi myszki i klawiatury - czyli co 
+	ma sie dziac gdy klikniemy w pewne miejsce, czy wcisniemy jakis klawisz. 
+	Zdefiniowane jest tez jak pokazywac plansze, jak konczyc czy inicjalizowac.
+
+game.ml
+
+		Gotowy moduł gry.
+
+othello.ml, lessons.ml, training.ml
+
+	  Uruchomienie odpowiednio othello, lessons, training.
+
+windows_othello.ml, windows_lessons.ml, windows_training.ml:
+
+	  j.w.
+

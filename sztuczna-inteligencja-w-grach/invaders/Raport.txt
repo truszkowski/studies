@@ -1,0 +1,220 @@
+0.   Wstêp.
+
+	To ju¿ trzecia, finalna iteracja programu. G³ówn± cech± tej iteracji jest 
+zmodyfikowany algorytm alfabety z pog³êbianiem iteracyjnym dzia³aj±cy na 
+dynamicznym drzewie gry. 
+
+1.   Struktury danych.
+
+	Drzewo gry, reprezentacja umo¿liwiaj±ca opisanie sytuacji mo¿liwych do 
+osi±gniêcia po kolejnych ruchach graczy. Wêz³y w drzewie odpowiadaj± 
+poszczególnym sytuacjom na planszy. W ka¿dym wê¼le okre¶lane jest który z 
+graczy ma ruch, jaki ruch poprzednio wykonano oraz inne atrybuty wymagane 
+do implementacji.
+	Korzeniem jest aktualna sytuacja na planszy, nastêpnie zbiór wszystkich 
+mo¿liwych ruchów generuje nastêpne wêz³y w drzewie. 
+	
+	Koniecznymi metodami operuj±cymi na drzewie gry s± stworzenie korzenia,
+rozwijanie ga³êzi oraz usuwanie niepotrzebnych ju¿ ga³êzi. Rozwijanie, 
+czyli generowanie nowych wêz³ów w drzewie odbywa siê przy pomocy algorytmu 
+alfabety, zatem drzewo rozrasta siê w kierunku szacowanym jako najbardziej
+prawdopodobny. Zwijanie nieu¿ywanych ga³êzi odbywa siê po wykonaniu ruchu.
+Mamy wtedy pewno¶æ, ¿e okre¶lonych ga³êzi na pewno ju¿ nie odwiedzimy. 
+
+	Aby efektywnie zarz±dzaæ czêstym generowaniem i usuwaniem wêz³ów, 
+utworzy³em specjalny alokator pamiêci. Dostaje on pewn± pulê pamiêci na 
+pocz±tku gry, nastêpnie jedynie ¿ongluje wêz³ami wolnymi i tymi w u¿yciu. 
+	Przy przyznawaniu 300MB pamiêci, alokator jest w stanie udostêpniæ ponad 
+5mln wêz³ów, z czego w trakcie gry(na 5 minut) nie u¿yto jednorazowo 
+wiêcej ni¿ 32% wêz³ów z wydzielonej puli. 
+
+2.   Algorytm przeszukiwania.
+
+	Jak wspomnia³em we wcze¶niejszym rozdziale, zastosowa³em do 
+przeszukiwania drzewa algorytm alfabeta. Stosuj±c ten¿e algorytm, alokujemy
+wêz³y tylko te, które s± na drodze. 
+	U¿yty algorytm jest w istocie modyfikacj± klasycznego algorytmu alfabety.
+Mianowicie, funkcja oceniaj±ca dzia³a tak samo niezale¿nie kto j± wywo³uje, 
+st±d zast±pi³em dwa parametry alfa i beta jednym. Odcinanie, niezale¿nie od 
+g³êboko¶ci, podlega zatem jedynie od tego parametru. Warunek odciêcia jest 
+analogiczny - je¶li oceniany wêze³ ma ni¿sz± warto¶æ ni¿ wêze³ wy¿ej to 
+ucinamy dalsze ga³êzie bo niezale¿nie co dalej znajdziemy i tak zostanie 
+wybrane minimum. 
+
+	Algorytm zosta³ równie¿ rozwiniêty o iteracyjne pog³êbianie. Najpierw schodzi
+na g³êboko¶æ 1 i z ka¿d± iteracj± pog³êbia o nastêpny poziom. Momentem stopu
+przeszukiwañ jest czas na ruch. Na podstawie czasu pozosta³ego na grê, szacujê
+czas potrzebny na wykonanie jednego ruchu. Dodatkowym momentem stopu jest 
+wyczerpanie zasobów pamiêciowych.
+
+	Zastosowa³em równie¿ nastêpuj±c± optymalizacjê przeszukiwania, odwiedzaj±c
+w pierwszej kolejno¶ci najwy¿ej oceniany wêze³. Z ka¿dym kolejnym zag³êbieniem
+jest on dok³adniej wyliczany. 
+
+	Kolejn± optymalizacj± jest odciêcie analizowania ruchów przeciwnika gdy
+piony graczy s± rozdzielone. Wtedy istotne jest jedynie zaj±æ jak najwiêcej
+pól. Dodatkowo, wystarczy, ¿e bêdziemy w ka¿dym ruchu rozpatrywaæ ruchy jednego
+pionka, np o najni¿szym id. Dziêki temu generujemy du¿o mniej rozga³êzieñ w 
+drzewie gry. Przeszukiwanie w tym wypadku bêdzie jednak pe³ne, gdy¿ nie ma 
+mo¿liwo¶ci odcinania jakichkolwiek ga³êzi. 
+	W tej wytuacji ruchy drugiego gracza w niczym nie mog± przeszkodziæ pierwszemu,
+wiêc jako ruch gracza drugiego generuje pas.
+
+3.   Heurystyki.
+
+	Stosowane heurystyki mo¿na rozdzieliæ na dwa rodzaje. Jedne dotycz± 
+rozstawiania pionów na pocz±tku gry. Drugie wykonywania ruchów.
+
+3.1. Rozstawianie pionów.
+
+	Jest stosowany osobny algorytm rozmieszczania dla standardowej planszy i dla
+ka¿dej innej. Dla domy¶lnej, zastosowa³em, co¶ w rodzaju ksiêgi otwaræ. 
+Algorytm stara siê zaj±æ kluczowe miejsca na planszy, takie aby mieæ u³atwione
+budowanie bloków i jednocze¶nie zagarniaæ du¿± czê¶æ planszy. 
+
+   a b c d e f g h i j k l m n o p q r s
+19 . . . . . . . . . . . . . . . . . . . 19
+18 . . . . . . . . . . . . . . . . . . . 18
+17 . . . . . 2 2 2 . . . . . . . . . . . 17
+16 . . . # 5 2 2 2 5 # # # # # # # . . . 16
+15 . . . # 5 5 5 5 5 . . . . . 5 5 . . . 15
+14 . . . # . 5 5 5 5 . . . . 5 5 4 4 . . 14
+13 . . . # . . . . . . . . . 5 5 4 4 . . 13
+12 . . . # . . . . . . . . . 5 5 5 5 . . 12
+11 . . . # . . . . . . . . . . 5 5 . . . 11
+10 . . . # . . . . . # # # # # # # . . . 10
+ 9 . . . 5 5 5 . . . . . . . . 5 5 . . .  9
+ 8 . . 1 1 5 5 . . . . . . . 5 5 5 5 . .  8
+ 7 . . 1 1 5 5 . . . . . . . 5 5 5 5 . .  7
+ 6 . . 1 1 5 5 . . . . . 5 5 5 5 5 5 . .  6
+ 5 . . . 5 5 . . . . . 5 5 5 5 5 5 . . .  5
+ 4 . . . # # # # # # # 5 3 3 5 5 # . . .  4
+ 3 . . . . . . . . . . . 3 3 5 . . . . .  3
+ 2 . . . . . . . . . . . . . . . . . . .  2
+ 1 . . . . . . . . . . . . . . . . . . .  1
+   a b c d e f g h i j k l m n o p q r s
+
+    Rys 1. Algorytm dla standardowej planszy stara siê stawiaæ
+    piony kolejko na polach 1, 2, 3, 4, 5. Je¶li ju¿ nie ma gdzie
+    stawiaæ wybiera pole daj±ce szacunkowo najwiêksze terytorium.
+
+	Ogólny algorytm rozmieszczania pionów, polega na wybieraniu takiego 
+posuniêcia aby maksymalizowaæ swoje potencjalne terytorium i jednocze¶nie
+dbaæ o to aby piony rozstawia³y siê równomiernie na ca³ej planszy.
+
+3.2. Ocena planszy.
+
+	Podstawow± heurystyk± jest szacowanie terytoriów graczy. Uznajemy, ¿e
+pole znajduje siê na terytorium gracza gdy ten w mniejszej liczbie ruchów
+mo¿e na nie doj¶æ ni¿ przeciwnik. 
+	T± heurystykê postanowi³em delikatnie modyfikowaæ. Mianowicie, im szybciej
+pionek dotrze na pole od przeciwnika tym bardziej prawdopodobne, ¿e to pole
+bêdzie nale¿eæ do jego terytorium. Dlatego w ró¿nych wersjach heurystyk, jakie
+ze sob± porównywa³em, gracz dostaje mniej punktów, je¶li pola jest brzegowe.
+Ile konkretnie, dla jakiego pola to ju¿ zale¿a³o od heurystyki.
+
+3.3. Kolejno¶æ odwiedzania wêz³ów.
+
+	Podczas generowania mo¿liwych posuniêæ pionami, w pierwszym rzucie sprawdzam
+takie ruchy, które blokuj± pole sk±d siê przysz³o. Nastêpne pola s± uk³adane w 
+kolejno¶ci wed³ug wskazówek zegara. Ciê¿ko powiedzieæ, czy takie zachowanie ma 
+sens podczas pocz±tkowej czy ¶rodkowej fazy gry. Na pewno jednak ma w koñcowej.
+W przewa¿aj±cej liczbie przypadków, zostan± wype³niane s±siednie pola.
+
+4.   Eksperymenty.
+
+	Eksperymenty polega³y na wy³onieniu odpowiednich heurystyk do oceny planszy,
+zarówno ze wzglêdu na wybór ruchu jak i sposobu rozstawiania pionów.
+	Wszystkie mecze rozgrywane by³y na maszynie "students", ze wzglêdu na d³ugie czasy
+gier, bowiem ka¿dy z programów stara siê wykorzystaæ ca³y przys³uguj±cy czas. 
+	Mecze na planszach 19x19 by³y grane na czas 5 minut dla gracza, na 9x9 - 2 minuty.
+
+4.1. Wybór ruchu.
+
+	Przygotowa³em kilkana¶cie mo¿liwych funkcji oceny planszy. Poni¿sza tabela prezentuje
+wyniki turnieju, ka¿dy z ka¿dym. Heurystyki ró¿ni± siê sposobem oceny warto¶ci pól 
+brzegowych, czyli takich gdzie przeciwnicy maj± równie blisko, lub ró¿nica ich odleg³o¶ci
+niewiele siê ró¿ni.
+
+  Numer    | Ró¿nica odleg³o¶ci od najbli¿szych pionków graczy | Wyniki w turnieju
+heurystyki |   -n  |  -2  |  -1  |   0  |  +1  |  +2  |  +n    | Wgr | Pkt | Awans  
+-----------+-------+------+------+------+------+------+--------+-----+-----+-------
+ pt-a01    |    0  |   0  |   0  |   0  |  10  |  10  |  10    |  15 | 456 | TAK
+ pt-b01    |    0  |   0  |   1  |   1  |   9  |  10  |  10    |  15 | 469 | TAK
+ pt-b02    |    0  |   1  |   1  |   1  |   9  |  10  |  10    |  15 | 488 | TAK
+ pt-b03    |    0  |   1  |   2  |   2  |   9  |  10  |  10    |  14 | 377 |  -
+ pt-b04    |    0  |   1  |   2  |   2  |   9  |  10  |  10    |  16 | 508 | TAK
+ pt-c01    |    0  |   0  |   1  |   1  |  10  |  10  |  10    |  11 | 251 |  -
+ pt-c02    |    0  |   1  |   2  |   2  |  10  |  10  |  10    |  14 | 344 |  -
+ pt-c03    |    0  |   1  |   2  |   2  |  10  |  10  |  10    |  17 | 575 | TAK
+ pt-c04    |    0  |   1  |   3  |   3  |  10  |  10  |  10    |  13 | 379 |  -
+ pt-c05    |    0  |   1  |   3  |   3  |  10  |  10  |  10    |  15 | 290 | TAK
+ pt-d01    |    0  |   0  |   1  |   1  |   8  |   9  |  10    |  16 | 557 | TAK
+ pt-d02    |    0  |   1  |   2  |   2  |   8  |   9  |  10    |  12 | 421 |  -
+ pt-d03    |    0  |   1  |   2  |   2  |   8  |   9  |  10    |  14 | 267 |  -
+ pt-d04    |    0  |   1  |   3  |   3  |   8  |   9  |  10    |  13 | 435 |  -
+ pt-d05    |    0  |   1  |   3  |   3  |   8  |   9  |  10    |  10 | 121 |  -
+
+	Najlepsze heurystyki z turnieju zagra³y potem ka¿dy z ka¿dym po 20 gier.
+
+Heurystyka | Meczy | Wygranych | Punkty      |
+-----------+-------+-----------+-------------+
+ pt-b01    |  140  |      80   | 2495 : 1548 |
+ pt-b02    |  140  |      77   | 2220 : 1795 |
+ pt-c03    |  140  |      72   | 2044 : 1718 |
+ pt-d01    |  140  |      70   | 1947 : 1753 |
+ pt-a01    |  140  |      69   | 1795 : 2027 |
+ pt-c05    |  140  |      66   | 1459 : 2171 |
+ pt-b04    |  140  |      63   | 1605 : 1975 |
+ pt-c01    |  140  |      63   | 1492 : 2070 |
+
+4.2. Rozstawianie pionków.
+
+	Do porównania s± dwa ogólne algorytmy rozstawiania. Pierwszy (pt-v3.max-area)
+opiera siê na maksymalizacji terenu, w stosunku w³asnego terenu do przeciwnika. 
+Drugi (pt-v3.even-area) dzia³a w dwóch etapach. W pierwszym do selekcji wybierane 
+s± pola odpowiednio dalekie od ju¿ rozstawionych pionów, by potem w 2 etapie 
+spo¶ród nich wybieramy te rozstawienie, które daje najwiêkszy teren.
+	Trzeci algorytm (pt-v3.book) stosuje ksiêgê otwaræ. Program ma stablicowane 
+pewne pola i kolejno na nie stara siê graæ (rozdzia³ 3.1). 
+
+	Na planszy standardowej 19x19.
+
+ pt-v3.even-area | Meczy | Wygrane          | Punkty                       |
+ kontra          |       | num |  al | Suma |  num    |  al     |  Suma    |
+-----------------+-------+-----+-----+------+---------+---------+----------+
+ pt-v3.max-area  |   20  |  10     6     16 | 185:0     148:0      112:0   |
+ pt-v3.book      |   20  |   4     4      8 | 131:92     81:132    212:224 |
+
+	Na planszy 19x19, bez zablokowanych pól.
+
+ pt-v3.even-area | Meczy | Wygrane          | Punkty                       |
+ kontra          |       | num |  al | Suma |  num    |  al     |  Suma    |
+-----------------+-------+-----+-----+------+---------+---------+----------+
+ pt-v3.max-area  |   20  |   5     7     12 | 115:59    169:61     284:120 |
+
+	Na planszy 9x9, bez zablokowanych pól.
+
+ pt-v3.even-area | Meczy | Wygrane          | Punkty                       |
+ kontra          |       | num |  al | Suma |  num    |  al     |  Suma    |
+-----------------+-------+-----+-----+------+---------+---------+----------+
+ pt-v3.max-area  |   40  |  10    12     22 |  78:43     62:47     140:90  |
+
+
+5.   Wyniki.
+
+	Najlepsz± heurystyk± do wyboru ruchu okaza³a siê 'pt-b01', do rozstawiania 
+pionów - heurystyka równomiernego rozstawiania pionów po³±czona z ksiêg± otwaræ dla
+standardowej planszy.
+
+	Finalna wersja w porównaniu z wcze¶niejszymi.
+
+ Wersja 3  | Meczy | Wygrane          | Punkty                      |
+ kontra    |       | num |  al | Suma |  num    |  al     |  Suma   |
+-----------+-------+-----+-----+------+---------+---------+---------+
+ wersja 1  |   20  |  10    10     20 | 636:0     605:0     1241:0  |
+ wersja 2  |   20  |   9     8     17 | 386:8     309:12     695:20 |
+
+	Wcze¶niejsze wersje dzia³a³y tylko na planszy 19x19 z 5 pionami dla gracza. 
+Finalna na dowolnej, nie wiêkszej od 19x19 z maksymalnie 5 pionami dla gracza.
+

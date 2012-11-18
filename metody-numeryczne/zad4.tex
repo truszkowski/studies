@@ -1,0 +1,55 @@
+\documentclass[12pt,a4paper,twoside]{article}
+\RequirePackage[T1]{fontenc}
+\RequirePackage{times}
+\RequirePackage[latin2]{inputenc} 
+\RequirePackage[polish]{babel}
+\RequirePackage{comment} 
+\RequirePackage{a4wide} 
+\RequirePackage{longtable}
+\RequirePackage{multicol} 
+\RequirePackage{fancyhdr}
+\RequirePackage{exscale}
+\RequirePackage{verbatim}
+\RequirePackage{amsmath}
+\RequirePackage{url}
+\RequirePackage[dvips,dvipdf]{graphicx}
+\author{Piotr Truszkowski}
+\title{Metody numeryczne --- zadanie 4}
+
+\begin{document}
+
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0.5pt}
+\renewcommand{\footrulewidth}{0pt}
+\addtolength{\headheight}{0.5pt}
+\lhead[\emph{Piotr Truszkowski}]{\emph{Piotr Truszkowski}}
+\rhead[\thepage]{\thepage}
+
+\section*{Zadanie 1}
+
+Zauwazmy, ze funkcja $\phi_{i}(x)$ jest nie rózniczkowalna, lecz na 
+potrzeby zadania mozemy ja na sile zrózniczkowac.
+$\phi_{i}'(x)$ wyniesie $1$ gdy $x \in [(i-1)h,ih)$ 
+wyniesie $-1$ gdy $x \in [ih,(i+1)h]$ oraz $0$ wpp.
+Liczenie kwadratury mozemy, wiec znaczaco uproscic.
+Po pierwsze wystarczy uwzgledniac pjedynie przedialy gdzie $\phi_{i}(x)$ osiaga 
+nie zerowa wartosc. Po drugie mozna zauwazyc, ze poprzez wyliczenie  kwadratury
+dla $i$ na odcinku $[ih,(i+1)h]$ mozna ja uzyc do wyliczenia kwadratury 
+dla $i+1$ na odcinku tym samym, jedynie z innym znakiem. Oszczednosc obliczeniowa 
+dwukrotna. 
+\\
+W przypadku korzystania z biblioteki GSL w przypadku drugiej funkcji mo¿na 
+uzyc specjalnej kwadratury dla funkcji silnie oscylujacych  (oddzielnie dlasin i cos).
+\\
+\\
+Uklad równan $G(U)h* - F$ jest ukladem równan z macierza trójdiagonalna symetryczna.
+GSL dysponuje specjalna procedura do wyliczania ukladu z takimi wlasnie macierzami.
+Wystarczy tylko podac za argumenty wektor diagonali, poddiagonali.
+\\
+\\
+Dla dosc duzych danych $N = K = 10^6, \epsilon = 10^{-6}$ GSL protestuje, 
+oznajmiajac, iz nie jest w stanie  policzyc kwadratury z zadana dokladnoscia.
+Dla $\epsilon = 10^{-4}$ jest juz w stanie.
+
+\end{document}

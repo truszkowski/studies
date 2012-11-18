@@ -1,0 +1,54 @@
+.PU
+.TH monitor "0.1"
+.SH NAZWA
+monitor \- monitoruje dzialanie zadanego programu
+.br
+
+.SH SKLADNIA
+.ll +8
+.B monitor 
+.ll -8
+.br
+
+.SH OPIS
+.I monitor
+\- monitoruje dzialanie procesu zadeklarowanego w pliku konfiguracyjnym.
+.I ~/.mprc
+na zadanych systemach. Format pliku:
+.br
+	PROCESS{tab}{program}({spacja}{argument})*
+.br
+	SYSTEMS{tab}{system}({spacja}{system})*
+.br
+	TIME{tab}{czas}
+.br
+Uruchomiony monitor na systemie 
+.I `system' 
+uruchomi program 
+.I `program' 
+i co 
+.I 'czas` 
+sekund bedzie sprawdzal czy nadal dziala. W przeciwnym przypadku 
+uruchomi program na nastepnym systemie i postepuje tak cyklicznie.
+.br
+Rozne zachowania monitorow sa zapisywane do pliku:
+.I ~/monitor.log
+.
+
+.SH OPCJE
+.TP
+Program uruchamiany bez opcji.
+
+.SH AUTOR
+Piotr Truszkowski (listopad 2006)
+
+.SH BLEDY I SYTUACJE WYJATKOWE
+Program moze sie zachowywac w sposob nieprzewidywalny gdy w trakcie jego dzialania bedzie sie manipulowac zawartoscia pliku 
+.I ~/monitor.log
+. Plik ten jest elementem komunikacji monitorow. na roznych systemach. Zaklada sie tez, ze na kazdym z systemow jest dostepny tenze plik.
+Nieprawidlowa konfiguracja w 
+.I ~/.mprc
+jest wykrywana przez monitory.
+
+.SH ZOBACZ TAKZE
+.BR watchfs(1)

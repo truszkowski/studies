@@ -1,0 +1,82 @@
+0. U¿y³em:
+
+	rdiff-backup 1.0.5 i fuse 2.5.3, wszystko z linkow na 
+	stronie zadania 2.
+	
+1. Montowanie systemu plikow.
+
+	  O ile argumenty sa poprawne, program bedzie odczytywal
+	z katalogu rdiff-backup-data dane o wersjach katalogow.
+	Bedzie zwracal uwage na pliki session_statistics i 
+	mirror_metadata. Z pierwszego pliku pobierze informacje 
+	ile ma plikow wersja z zadanego czasu i zaalokuje odpowiednia
+	ilosc pamieci dla tych plikow. Z mirror-ów odczytywane beda
+	dane kazdego pliku. Kazdy plik ma tam wyszczegolnione 
+	czy jest plikiem/katalogiem, rozmiar, nazwa, itp. 
+	  Jak pojawi sie jakas niezgodnosc, program wypisze komentarz:
+	"BLAD: opis bledu\n".
+	
+2. Struktury danych, inicjowanie systemu plikow.
+
+	  Kazda wersja rdiff-owanego katalogu ma swoj katalog w
+	pamieci. Pod struktura struct SESSIONS sessions[]; kryja
+	sie pokolei wersje katalogów. Dalej dane z mirror-ów sa
+	zrzucane do sessions[SID].nodes[] pokolei, wg wystapienia.
+	Kazdy z plikow ma dwa odnosniki do list. Pierszy jest dla 
+	wszystkich, grupuje on pliki z tego samego katalogu. Drugi
+	jest tylko dla katalogow, wskazuje ktore pliki ma w sobie.
+	Listy sa zaimplemetowane tak jak list_head w linuxie.
+	Tablice plikow dla kazdej sesji trzymam posortowana. 
+	Generalnie juz po wczytaniu tablica jest posortowana, 
+	nieznalazlem jednak nigdzie w dokumantacji potwierdzenia, 
+	wiec na wszelki wypadek tablice sortuje quicksortem.
+	Dzieki temu moge szukac pliku binarnie w czasie log(N). 
+	Ponadto ulatwia to tez inicjalizacje struktury plikow.
+	Kazdemu	plikowi ustawiam daty dostepu/zmiany/modyfikacji na 
+	czas w jakim powstala wersja inkrementu rdiff'a. Wszystkim
+	plikom ustawiam prawa dostepu jedynie dla wlasciciela 
+	(jedynie do odczytu) a wlasciwiela ustawiam wg getuid(), 
+	getgid(), czyli na dane uruchamiajacego program.
+	Rozmiar katalogu interpretuje jako ilosc plikow znajdujacych 
+	sie w nim bezposrednio. Kazdy plik/katalog posiada tez 
+	mutexa, bez nich dosc latwo o popsucie struktur danych, 
+	gdyz operacja open na plikach, ktore trzeba przywrocic, 
+	trwa stosunkowo wolna i zdarzalo mi sie dosc powtarzalnie, 
+	iz struktura sie psula ( np zostawaly pliki w /tmp ).
+	
+3. Czytanie katalogow/plikow.	
+	
+	  Czytanie katalogow odbywa sie poprzez przejscie listy
+	plikow jakie katalog zawiara. Czytanie plikow czesto wiaze 
+	sie z potrzeba przywrocenia pliku. Wywoluje wtedy fork() oraz
+	execlp("rdiff-backup", rdiff-backup", "-r", ... ). Dane sa 
+	zapisywane do pliku w /tmp/XXXXXX i tamten plik w rzeczywistosci
+	uzytkownik czyta. Kazdy otwarty plik ma swoj licznik polaczen. 
+	Dopiero gdy licznik spadnie do zera, plik z /tmp/ jest usuwany.
+	  Na wszelki wypadek przy udmontowywaniu usuwam z /tmp/ pliki,
+	ktore pozostaly (tych plikow, ktorych licznik > 0). 
+	  Czas modyfikacji/dostepu/zmiany wyrazam wgczasu lokalnego. Jedynie
+	katalogi w "/" sa w GMT, wydalo mi sie takie rozwiazanie najsensowniejsze.
+	Gdy cos zmieniamy u siebie na dysku to powinno to byc widoczne w naszym
+	lokalnym czasie.
+
+4. Operacje systemu plikow.
+
+	open() - 
+		otwieramy plik, albo z ostatniej wersji, albo z /tmp/.
+		zwiekszamy licznik oraz zmieniamy czas dostepu,
+	read() - 
+		poprostu read,
+	readdir() - 
+		dostaje liste plikow wg listy plikow jaka ma katalog w pamieci,
+		aktualizuje date dostepu dla katalogu,
+	release() - 
+		zamyka plik, o ile licznik otwarc zszedl do zera,
+	readlink() -
+		czyta symboliczny link (tylko dla dwoch przypadkow) oraz
+		aktualizuje czas dostepu,
+	getattr() -
+		pobiera atrybuty, takie jak ustawione zostaly podczas montowania
+		systemu plikow,
+	destroy() - 
+		czysci pamiec.

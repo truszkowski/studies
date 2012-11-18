@@ -1,0 +1,980 @@
+\documentclass[12pt,a4paper,twoside]{article}
+\RequirePackage[T1]{fontenc}
+\RequirePackage{times}
+\RequirePackage[latin2]{inputenc} 
+\RequirePackage[polish]{babel}
+\RequirePackage{comment} 
+\RequirePackage{a4wide} 
+\RequirePackage{longtable}
+\RequirePackage{multicol} 
+\RequirePackage{fancyhdr}
+\RequirePackage{exscale}
+\RequirePackage{amsmath}
+\RequirePackage{url}
+\RequirePackage[dvips,dvipdf]{graphicx}
+\author{\\ \\ \\ \\ \\
+Piotr Truszkowski}
+\title{
+\begin{center}
+{\LARGE Projekt zadania zaliczeniowego\\
+z programowania obiektowego\\
+2004/2005}
+\end{center}
+}
+
+\def\hk#1#2#3{
+\makebox[#1mm]{}
+$\diamond$
+{\bf #2}
+\emph{#3}
+\\
+}
+
+\begin{document}
+
+% % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
+
+\maketitle
+\thispagestyle{empty}
+\newpage
+\thispagestyle{empty}
+\tableofcontents
+\newpage
+
+%\pagestyle{fancy}
+%\renewcommand{\sectionmark}[1]{\markleft{\thesection\ #1}}
+% %\renewcommand{\sectionmark}[1]%{\markleft{\thesection\ #1}}
+%\fancyhf{}
+%\fancyhead[RE,RO]{\small\thepage}
+%\fancyhead[LE]{\small\markleft}
+%\fancyhead[LO]{\small\markleft}
+% %\fancyhead[LO]{\small\markboth}
+% %\fancyhead[LE]{\small\markboth} %\bfseries
+% %\renewcommand{\headrulewidth}{0.5pt}
+% %\renewcommand{\footrulewidth}{0pt}
+% %\addtolength{\headheight}{0.5pt}
+%\fancypagestyle{plain}{
+%\fancyhead{}
+% %\rhead[\emph{\thesection}]{\emph{\thesection}}
+% %\lhead[\emph{Zadanie zaliczeniowe}]{\emph{Zadanie zaliczeniowe}}
+% %\renewcommand{\headrulewidth}{0pt}
+%}
+
+\section{Wstêp --- przedstawienie problemu}
+
+Zadanie zaliczeniowe polega na napisaniu gry. Gracz wciela siê w grupê rycerzy maj±cych na celu znalezienie 
+legowiska smoka. Aby tam dotrzeæ rycerze musz± przej¶æ labirynt, w którym to rozmieszczone s± rozmaite pu³apki. 
+Ruchy odbywaj± siê na sposób turowy, gdy¿ na skutek magii czas zatraci³ tam swoj± ci±g³o¶æ. 
+
+\section{Ogólny zarys rozwi±zania problemu}
+
+Rozwi±zanie bêdzie oparte na technice programowania obiektowego. 
+W tym celu pos³u¿ê siê jezykiem programowania Smalltalk, u¿ywaj±c oprogramowania Dolphin. \\
+Ka¿de pole labiryntu jest obiektem, któremu mo¿na przypisywaæ jako atrybut rycerzy. 
+Przez ca³a gre pola s± niezmiennicze z dok³adno¶ci± do ich atrybutów, tj nie ma takiej sytuacji, 
+¿e jaki¶ obiekt zmienia siê w inny czy te¿ nastêpuje podmiana. Rycerze równie¿ s± obiektami posiadaj±cymi 
+pewne cechy (atrybuty), przechodz±c nimi plansze mog± oni dokonywaæ zmian w atrybutach pól (wybuchy min, zjadanie murów...) 
+Nad w³a¶ciwym przebiegiem gry czuwa obiekt klasy -- {\bf Gra}. W³a¶nie w tym obiekcie wystêpuj± powi±zania z 
+interfejsem. Sam interfejs bêdzie graficzny. 
+
+
+\subsection{Hierarchia klas}
+
+Podzia³ na klasy powsta³ w g³ównej mierze w oparciu na idei: obiekt -- rzeczownik, 
+metoda -- czynno¶æ, atrybut -- przymiotnik. I tak na przyk³ad rycerz ze stalow± szczêk± nale¿y do klasy {\bf Zjadacz} 
+(nadklas: {\bf Wyposazony} i {\bf Rycerz}). Wykonuje on czynno¶ci takie jak zjadanie muru oraz zwyk³e chodzenie 
+(i inne...). Okre¶laj± go atrybuty, przymiotniki, ile ma specjalnych zêbów, jak wygl±da itp. \\
+
+\hk{0}{Object}{}
+\hk{9}{Pole}{ --- (klasa abstrakcyjna)}%'wsp ktojest czywidoczne wygladwid wygladniewid'}
+\hk{17}{Zwykle}{}%''}
+\hk{17}{Legowisko}{}%''}
+\hk{17}{Pulapka}{ --- (klasa abstrakcyjna)}%''licznik}
+\hk{25}{Dziura}{}%'szerokosc'}
+\hk{25}{Mina}{}%''}
+\hk{17}{Mur}{ --- (klasa abstrakcyjna)}%''}
+\hk{25}{Wieczny}{}%''}
+\hk{25}{Zjadalny}{}%'licznik'}
+\hk{17}{Magazyn}{ --- (klasa abstrakcyjna)}%'pojemnosc ilejest licznik'}
+\hk{25}{Dentystyczny}{}%''}
+\hk{25}{Budowlany}{}%''}
+\hk{17}{Poza}{}%''}
+\newpage
+\hk{0}{Object}{}
+\hk{9}{Rycerz}{ --- (klasa abstrakcyjna)}%'wyglad zaznaczony'}
+\hk{17}{Nadzwyczajny}{}%''}
+\hk{17}{Skoczek}{}%''}
+\hk{17}{Wyposazony}{ --- (klasa abstrakcyjna)}%'ilemoge ilemam'}
+\hk{25}{Budowniczy}{}%''}
+\hk{25}{Zjadacz}{}%''}
+\hk{9}{Plansza}{}%'pola'}
+\hk{9}{Wspolrzedne}{}%'wspx wspy'}
+\hk{9}{Gra}{}%'plansza rycerzezywi rycerzemartwi'}
+
+Czê¶æ z powy¿szych klas jest jedynie abstrakcyjna (jak {\bf Pole}, {\bf Wyposazony}...) aby uwydatniæ 
+pewien wspólny sposób zachowywania siê obiektów ró¿nych klas. 
+Pomin±³em opis klas odpowiedzialnych za interfejs graficzny, omówiê je w punkcie {\bf 4}. 
+
+\subsection{Powi±zania miêdzy klasami}
+
+Czesto bêdzie dochodziæ do interakcji pomiêdzy obiektami. 
+\paragraph{Gra} 
+Obiekt klasy {\bf Gra} odpowiedzialny za w³a¶ciwy przebieg gry czêsto wywo³uje metody na obiektach klasy {\bf Rycerz} 
+(aby wykonali ruch, ¶ci¶lej to na obiektach podklas tej klasy jak {\bf Skoczek}, {\bf Zjadacz}...) oraz na obiekcie {\bf Plansza}
+w celu uaktualniania jej po up³yniêciu ka¿dej jednostki czasu. 
+\paragraph{Plansza}
+Obiekt tej klasy zna pola labiryntu, wiêc to w³a¶nie ten obiekt bêdzie przekazywa³ dalej metodê uaktualniaj±c± te pola 
+(obiektów klas: {\bf Zwykle}, {\bf Dziura}...). 
+\paragraph{Rycerz}
+Mam tu na my¶li obiekty podklas tej klasy. One to bêda siê czêsto komunikowaæ z polami labiryntu a to wchodz±c na nie, 
+zjadaj±c mury, teleportuj±c siê, ³ataj±c dziurê, itp. 
+\paragraph{Inne...}
+Dochodzi tak¿e do interakcji miêdzy obiektami tych samych klas 
+(b±d¼ obiektów podobnych -- rozumiem przez to np: {\bf Zjadalny} i {\bf Mina}, jedno i drugie jest polem, podobnie z rycerzami). 
+I tak na przyk³ad wybuch miny musi wywieraæ odpowiednie reakcje u s±siadów. \\ 
+Ponadto znajdowanie s±siadów wymaga wspó³pracy jakiego¶ pola z plansz±, to pole siê ,,pyta'' kto jest obok 
+(alternatywn± wersj± mog³oby byæ pamiêtanie w atrybucie przez pole kogo ma za s±siada).
+
+\newpage
+
+\section{Szczególowy opis klas}
+
+\subsection{Pole}
+
+\begin{longtable}{|p{2in}|p{4in}|}
+\hline
+{\bf Atrybuty} & {\bf Opis}\\
+\hline
+\endhead
+wsp & Wspó³rzedne pola na planszy. \\ 
+ktojest & Informacja kto jest na tym polu (kolekcja). \\ 
+czyodwiedzone & Informacja czy pole by³o ju¿ odwiedzone. \\
+czywidoczne & Informacja czy pole jest widoczne. \\ 
+wygladwid & Wygl±d pola widocznego. \\ 
+wygladniewid & Wygl±d pola niewidocznego. \\
+plansza & Plansza. \\
+\hline 
+\end{longtable}
+\begin{longtable}{|p{2in}|p{4in}|}
+\hline
+{\bf Metody klasowe} & {\bf Opis}\\
+\hline
+\endhead
+newX: x y: y &
+Nowy obiekt tej klasy, ustawiany jest te¿ atrybut wygl±dniewid, jako ¿e ka¿de pole wygl±da tak samo gdy jest nie widoczne. \\ \hline
+\end{longtable}
+\begin{longtable}{|p{2in}|p{4in}|}
+\hline
+{\bf Metody instancyjne} & {\bf Opis}\\
+\hline
+\endhead
+initialize: ... & Inicjuje odpowiednie warto¶ci dla atrybutów (metoda wywo³ywana przez newX: y: ). \\ \hline
+czyMoznaWejsc &
+Sprawdzenie czy rycerz mo¿e siê ruszyæ na to pole.
+Zwraca true lub falsew zale¿no¶ci czy jest jaki¶ rycerz na tym polu. \\ \hline 
+czyJestKtos &
+Sprawdza czy jest jaki¶ rycerz na polu (true/false). \\ \hline
+czyMoznaZjesc &
+Zwraca false, ta metoda jest przedefiniowana dla muru zjadalnego. \\ \hline
+czyMoznaZalatac & 
+Zwraca false, ta metoda jest przedefiniowana dla dziury. \\ \hline
+czyMoznaTeleportowac &
+Zwraca true. Domy¶lnie mo¿na siê przenie¶æ, przedefiniowane w odpowiednich podklasach. \\ \hline
+czyMoznaZeby &
+Zwraca false, ta metoda jest przedefiniowana dla magazynu dentystycznego. \\ \hline
+czyMo¿naCegly &
+Zwraca false, ta metoda jest przedefiniowana dla magazynu budowlanego. \\ \hline
+pokaz & 
+Wyswietla wyglad obiektu w zalezno¶ci czy widoczny czy nie. 
+Wywo³uje równie¿ metode poka¿ dla ewentualnie obecnego rycerza. \\ \hline 
+widoczne & 
+Zmienia wartosc atrybutu czywidoczne na true. \\ \hline
+uwidocznijSasiadow & 
+Wywo³uje metodê \emph{widoczne} od s±siadów. \\ \hline
+wejdz: rycerz & 
+Atrybutowi ktojest jest dopisywany rycerz a atrybut czyodwiedzone zmieniany jest na true, 
+je¶li mia³ warto¶æ false wywo³ywana jest metoda \emph{uwidocznijSasiadow}.
+Zwraca false je¶li rycerz nie mo¿e wej¶æ na pole, w przypadku powiedzenia siê -- true. \\ \hline
+wybuch &
+Wysadza pole, tj zabija rycerza obecnego na polu. \\ \hline
+wyjdz &
+Rycerz wychodzi z pola, rycerz jest odpisywany z atrybutu ktojest. \\ \hline
+tiktak &
+Domy¶lnie nic nie robi, w obiektach innych klasach uaktualnia stan obiektu. \\ \hline
+sasiedzi &
+Wyznacza pola s±siaduj±ce (zwraca ich kolekcjê). \\ \hline
+wypisz & 
+Wypisuje odpowiednie informacje o polu (tekst). \\ \hline
+\end{longtable}
+
+Klasa abstrakcyjna. Obiekty tej klasy reprezentuj± przestrzeñ po której siê poruszaj± rycerze. 
+
+\subsection{Zwykle}
+
+\begin{longtable}{|p{2in}|p{4in}|}
+\hline
+{\bf Metody klasowe} & {\bf Opis}\\
+\hline
+\endhead
+newX: x y: y &
+Nowy obiekt tej klasy. Tak jak w naklasie dodatkowo ustalany jest atrybut wygladwid 
+(dla ka¿dego obiektu tej klasy ten atrybut jest taki sam). \\ \hline
+\end{longtable}
+\begin{longtable}{|p{2in}|p{4in}|}
+\hline
+{\bf Metody instancyjne} & {\bf Opis}\\
+\hline
+\endhead
+initialize: ... & Inicjuje odpowiednie warto¶ci dla atrybutów (metoda wywo³ywana przez newX: y: ). \\ \hline
+\end{longtable}
+
+Obiekty tej klasy reprezentuj± pola zwyk³e w labiryncie. Czyli pola, po których rycerze mog± siê poruszaæ 
+,,do woli''. Wszystkie niezbêdne atrybuty i metody s± bezpo¶rednio dziedziczone z klasy {\bf Pole}.
+
+\subsection{Legowisko}
+
+%\begin{longtable}{|p{2in}|p{4in}|}
+%\hline
+%{\bf Atrybuty} & {\bf Opis}\\
+%\hline
+%\endhead
+%ilosclegowisk & Atrybut klasowy! Okresla liczbe legowisk, mo¿e istnieæ tylko jedno. \\
+%\hline 
+%\end{longtable}
+\begin{longtable}{|p{2in}|p{4in}|}
+\hline
+{\bf Metody klasowe} & {\bf Opis}\\
+\hline
+\endhead
+newX: x y: y &
+%ww: wygladwid & przedefiniowana metoda klasowa, tak aby istnia³ tylko jeden obiekt tej klasy.\\ \hline
+Nowy obiekt tej klasy, ustawiany jest atrybut wygladwid. \\ \hline
+\end{longtable}
+\begin{longtable}{|p{2in}|p{4in}|}
+\hline
+{\bf Metody instancyjne} & {\bf Opis}\\
+\hline
+\endhead
+initialize: ... & Inicjuje odpowiednie warto¶ci dla atrybutów (metoda wywo³ywana przez newX: y: ). \\ \hline
+czyMoznaWejsc & 
+Przedefiniowane, zwraca true. Do legowiska mo¿e wej¶æ kliku rycerzy. \\ \hline
+wybuch &
+Nic nie robi -- je¶li s± tu rycerze to siê dobrze schowali i wybuch nie wyrz±dza im krzywdy. \\ \hline
+wypisz &
+Tekstowa informacja o polu. \\ \hline
+pokaz &
+Pokazanie obiektu na planszy. Dodatkowo pokazuje ilu jest rycerzy na polu. \\ \hline
+\end{longtable}
+
+Cel wyprawy rycerzy. Rycerz po dotarciu na to pole jest bezpieczny i pozostaje mu jedynie czekaæ 
+na resztê swoich wspó³towarzyszy. Ponadto zauwa¿my, ze na tym polu mo¿e przebywaæ kilku rycerzy. 
+Istnieje tylko jedno takie pole jak wynika ze specyfikacji. Wszak zdefiniowanie kilku takich pól w 
+pliku konfiguracyjnym uwa¿am za b³êdn± konfiguracjê planszy, o której powiadamiaæ bêdzie program 
+po wczytaniu pliku.
+
+\subsection{Pu³apka}
+
+\begin{longtable}{|p{2in}|p{4in}|}
+\hline
+{\bf Atrybuty} & {\bf Opis}\\
+\hline
+\endhead
+licznik & Okre¶la za jak± ilo¶æ tur ów obiekt bêdzie aktywn± pu³apk±. \\ 
+wygladnieakt & To jak wyg³±da pu³apka gdy nie jest aktywna. \\ 
+czasreaktywacji & Czas po jakim pu³apka siê uaktywnia. \\ \hline
+\end{longtable}
+\begin{longtable}{|p{2in}|p{4in}|}
+\hline
+{\bf Metody klasowe} & {\bf Opis} \\
+\hline
+\endhead
+newX: x y: y &
+Tak samo jak w nadklasie dodatkowo ustawia licznik na 0 i czasreaktywacji.\\ \hline
+\end{longtable}
+\begin{longtable}{|p{2in}|p{4in}|}
+\hline
+{\bf Metody instancyjne} & {\bf Opis}\\
+\hline
+\endhead
+%czyMoznaWejsc & 
+%Zwraca true.\\ \hline
+initialize: ... & Inicjuje odpowiednie warto¶ci dla atrybutów (metoda wywo³ywana przez newX: y: ). \\ \hline
+wejdz: rycerz &
+Je¶li licznik jest wiêkszy od zera metoda dzia³a jak w nadklasie w przeciwnym przypadku 
+zabija rycerza. \\ \hline
+zabij &
+Zabija rycerza je¶li ten znajduje siê na tym polu. \\ \hline
+tiktak &
+Zmniejsza licznik je¶li licznik wyniesie 0 zabija. \\ \hline
+pokaz & 
+Je¶li licznik jest równy 0 metoda zachowuje siê jak ta sama metoda z nadklasy, w przeciwnym 
+przypadku wy¶wietla atrybut wygladnieakt. \\ \hline
+\end{longtable}
+
+Klasa abstrakcyjna zawieraj±ca dwie podklasy {\bf Dziura} i {\bf Mina} (³atwiej teraz dorzuciæ jeszcze jaki¶ typ pu³apki). 
+Ich podobieñstwo spowodowa³o, ¿e nada³em im tê wspóln± nadklasê. Obie powoduj± ¶mieræ u rycerza gdy ten na to
+pole wejdzie. Warto zauwa¿yæ, ¿e w pewnych okoliczno¶ciach mur {\bf Zjadalny} te¿ jest pu³apk± 
+(rycerz stoj±cy na tym polu mo¿e zgin±æ). 
+Jednak¿e okre¶li³em jego przynale¿no¶æ do klasy {\bf Mur} gdy¿ intuicyjnie to w³a¶nie z murem {\bf Wiecznym} 
+ma wiêcej wspólnego ni¿ z {\bf Dziur±}.
+Mo¿na równie¿ rozwa¿aæ czy nie robiæ osobnych klas dla pu³apek aktywnych i nieaktywnych. Jednak¿e wed³ug mnie 
+nie ma takiej potrzeby, gdy¿ normaln± rzecz± jest, ¿e pewnien obiekt (choæby w naturze) zmienia siê a mimo tego pozostaje ten sam. 
+Tak samo jest tu, zarówno {\bf Mina} jak i {\bf Dziura} jedynie przez pewien moment pozostaj± w ,,u¶pieniu''.
+
+
+\subsection{Dziura}
+
+\begin{longtable}{|p{2in}|p{4in}|}
+\hline
+{\bf Atrybuty} & {\bf Opis}\\
+\hline
+\endhead
+szerokosc & Liczba cegie³ potrzebna do za³atania. \\
+\hline 
+\end{longtable}
+\begin{longtable}{|p{2in}|p{4in}|}
+\hline
+{\bf Metody klasowe} & {\bf Opis} \\
+\hline
+\endhead
+newX: x y: y &
+Tak samo jak w nadklasie dodatkowo ustawia licznik na 0, wygl±d, czasreaktywacji... \\ \hline
+\end{longtable}
+\begin{longtable}{|p{2in}|p{4in}|}
+\hline
+{\bf Metody instancyjne} & {\bf Opis}\\
+\hline
+\endhead
+initialize: ... & Inicjuje odpowiednie warto¶ci dla atrybutów (metoda wywo³ywana przez newX: y: ). \\ \hline
+czyMoznaZalatac & 
+Zwraca true jesli dziura nie jest zalepiona, jak jest zwraca false. \\ \hline
+zalataj: n &
+Dziura jest ³atana, metoda zwraca ilo¶æ nieu¿ytych cegie³. 
+Je¶li niemo¿na by³o za³ataæ zwróci n cegie³. \\ \hline
+wybuch &
+Zabija rycerza oraz je¶li Dziura by³a zalepiona niszczy j±. \\ \hline
+wypisz &
+Tekstowa informacja o polu. \\ \hline
+\end{longtable}
+
+Dziura ma swoj± szeroko¶æ. A poza tym ten obiekt jak ¿aden inny nie posiada takiej g³êbi... I to bezdennej. 
+
+\subsection{Mina}
+
+\begin{longtable}{|p{2in}|p{4in}|}
+\hline
+{\bf Metody klasowe} & {\bf Opis} \\
+\hline
+\endhead
+newX: x y: y &
+Tak samo jak w nadklasie dodatkowo ustawia licznik na 0, wygl±d, czasreaktywacji... \\ \hline
+\end{longtable}
+\begin{longtable}{|p{2in}|p{4in}|}
+\hline
+{\bf Metody instancyjne} & {\bf Opis}\\
+\hline
+\endhead
+initialize: ... & Inicjuje odpowiednie warto¶ci dla atrybutów (metoda wywo³ywana przez newX: y: ). \\ \hline
+wysadz & 
+Wysadza to pole oraz pola s±siaduj±ce, wysy³a metode wybuch do s±siadów. 
+Licznikowi zmienia wartosc na czasreaktrywacji. \\ \hline
+wybuch &
+Zabija rycerza oraz wysadza minê je¶li ta jest aktywna. \\ \hline
+wypisz &
+Tekstowa informacja o polu. \\ \hline
+\end{longtable}
+
+Temu polu natomiast mo¿na pozazdro¶ciæ wystrza³owo¶ci... 
+
+\subsection{Mur}
+
+\begin{longtable}{|p{2in}|p{4in}|}
+\hline
+{\bf Metody klasowe} & {\bf Opis}\\
+\hline
+\endhead
+newX: x y: y & 
+Nowy obiekt klasy. \\ 
+\hline
+\end{longtable}
+\begin{longtable}{|p{2in}|p{4in}|}
+\hline
+{\bf Metody instancyjne} & {\bf Opis}\\
+\hline
+\endhead
+initialize: ... & Inicjuje odpowiednie warto¶ci dla atrybutów (metoda wywo³ywana przez newX: y: ). \\ \hline
+czyMoznaWejsc & 
+Zwraca false.\\ \hline
+czyMoznaTeleportowac &
+False -- nie da siê wrzuciæ rycerza w ¶cianê (chyba, ¿e sciana jest zjedzona ale o tym w podklasie). \\ \hline
+wybuch & Nic nie robi. \\ \hline
+\end{longtable}
+
+Nadklasa dla {\bf Wieczny} i {\bf Zjadalny}. Obiekty z obu tych klas s± przecie¿ murami. 
+
+%\newpage
+
+\subsection{Wieczny}
+
+\begin{longtable}{|p{2in}|p{4in}|}
+\hline
+{\bf Metody klasowe} & {\bf Opis}\\
+\hline
+\endhead
+newX: x y: y & 
+Nowy obiekt klasy. \\ \hline
+\end{longtable}
+\begin{longtable}{|p{2in}|p{4in}|}
+\hline
+{\bf Metody instancyjne} & {\bf Opis}\\
+\hline
+\endhead
+initialize: ... & Inicjuje odpowiednie warto¶ci dla atrybutów (metoda wywo³ywana przez newX: y: ). \\ \hline
+wypisz &
+Tekstowa informacja o polu. \\ \hline
+\end{longtable}
+
+Nikt nie mo¿e wej¶æ, nic go nie zmienia. Jedynie czym mo¿e siê ró¿niæ od innego obiektu tej samej klasy to to, 
+¿e jeden jest widoczny a drugi nie. 
+
+\newpage
+
+\subsection{Zjadalny}
+
+\begin{longtable}{|p{2in}|p{4in}|}
+\hline
+{\bf Atrybuty} & {\bf Opis} \\
+\hline
+\endhead
+wygladruiny & Opisuje wygl±d muru zburzonego wybuchem miny b±d¼ zjedzonego. \\
+czasreaktywacji & Czas po jakim mur siê odbudowywuje. \\
+\hline 
+\end{longtable}
+\begin{longtable}{|p{2in}|p{4in}|}
+\hline
+{\bf Metody klasowe} & {\bf Opis}\\
+\hline
+\endhead
+newX: x y: y & 
+Dzia³a tak samo jak w nadklasie tyle tylko, ¿e ustawia czasreaktywacji, wygladwid, itd... \\ \hline
+\end{longtable}
+\begin{longtable}{|p{2in}|p{4in}|}
+\hline
+{\bf Metody instancyjne} & {\bf Opis}\\
+\hline
+\endhead
+initialize: ... & Inicjuje odpowiednie warto¶ci dla atrybutów (metoda wywo³ywana przez newX: y: ). \\ \hline
+wybuch & 
+Niszczy mur je¶li ten ma licznik równy 0 i ustawia go na czasreatywacji. \\ \hline
+czyMoznaTeleportowac &
+Mo¿na je¶li mur jest zburzony b±d¼ zjedzony. \\ \hline
+czyMoznaZjesc &
+Je¶li licznik jest równy 0 to daje true w przeciwnym przypadku false. \\ \hline
+zjedz: rycerz &
+Mur jest zjadany do warto¶ci atrubutu ktojest dopisywany jest rycerz. 
+Zmieniana jest równie¿ warto¶c licznika na czasreaktywacji. \\ \hline
+tiktak & 
+Zmienia warto¶æ licznika o 1, jesli zmieni na 0 to mur odrasta i zabija rycerza je¶li ten znajduje siê na polu. \\ \hline
+wypisz &
+Tekstowa informacja o polu. \\ \hline
+\end{longtable}
+
+Mur s³abszej konstrukcji ni¿ wieczny. Mo¿e go zniszczyæ wybuch miny lub rycerz-zjadacz. 
+Wtedy to pole jest przez pewnien czas dostêpne dla ka¿dego rycerza, potem mur odrasta zabijaj±c wszytko w swoim zasiêgu. 
+Ka¿dej tury wywo³ywana jest metoda tiktak uaktualniaj±ca stan obiektu. Tutaj podobnie jak w {\bf Pulapka} mo¿na rozpatrywaæ 
+utworzenie klas odpowiadaj±cym obiektom muru do zjedzenia, wysadzonego czy zjedzonego. I tak jak wcze¶niej uwa¿am to za zbêdne,
+gdy¿ mur pozostaje ten sam, co najwy¿ej nadgryziony gdzie po pewnym czasie siê ,,regeneruje''.
+
+\newpage
+
+\subsection{Magazyn}
+
+\begin{longtable}{|p{2in}|p{4in}|}
+\hline
+{\bf Atrybuty} & {\bf Opis}\\
+\hline
+\endhead
+pojemnosc & Pojemno¶æ magazynu. \\
+ilejest & Ile jest materia³u w magazynie. \\ 
+licznik & Za ile tur bêdzie nowy materia³. \\
+czasreaktywacji & Szybko¶æ produkcji. \\
+\hline 
+\end{longtable}
+\begin{longtable}{|p{2in}|p{4in}|}
+\hline
+{\bf Metody klasowe} & {\bf Opis}\\
+\hline
+\endhead
+newX: x y: y \par
+%ww: wygladwid \par
+%czas: czasreaktywacji \par
+poj: pojemnosc & 
+Dzia³a jak w nadklasie oraz dodatkowo ustala pojemno¶æ, ustawia atrybuty licznik i ilejest. \\ \hline 
+\end{longtable}
+\begin{longtable}{|p{2in}|p{4in}|}
+\hline
+{\bf Metody instancyjne} & {\bf Opis}\\
+\hline
+\endhead
+initialize: ... & Inicjuje odpowiednie warto¶ci dla atrybutów (metoda wywo³ywana przez newX: y: ). \\ \hline
+pobierz: n & 
+Pobiera n sk³adników, dodaj±c je stoj±cemu na polu rycerzowi oraz zmiejszaj±c warto¶æ atrybutu ilejest o n, oraz 
+zmieniaj±c licznik na czasreaktywacji (je¶li nie ma tylu cegie³ ile chce rycerz dodawane s± ca³e zasoby).
+Zwraca liczbê pobranych cegie³. \\ \hline
+tiktak &
+Zmniejsza licznik o 1. Gdy zmieni na 0 zwiêksza siê o 1 warto¶æ atrybutu ilejest. Warto¶æ licznika w 
+zale¿no¶ci od pojemno¶ci magazynu jest zmianiana na czasreaktywacji lub pozostaje na 0 gdy magazyn jest pe³ny. \\ \hline
+\end{longtable}
+
+Nadklasa dla {\bf Dentystyczny} i {\bf Budowniczy}. Ze zrozumia³ych powodów ta klasa ³±czy pewne cechy dwóch pozosta³ych. 
+
+
+\subsection{Dentystyczny}
+
+\begin{longtable}{|p{2in}|p{4in}|}
+\hline
+{\bf Metody klasowe} & {\bf Opis}\\
+\hline
+\endhead
+newX: x y: y \par
+%ww: wygladwid \par
+%czas: czasreaktywacji \par
+poj: pojemnosc & 
+Dzia³a jak w nadklasie oraz dodatkowo ustala pojemno¶æ, ustawia atrybuty licznik, ilejest, itd... \\ \hline 
+\end{longtable}
+\begin{longtable}{|p{2in}|p{4in}|}
+\hline
+{\bf Metody instancyjne} & {\bf Opis}\\
+\hline
+\endhead
+initialize: ... & Inicjuje odpowiednie warto¶ci dla atrybutów (metoda wywo³ywana przez newX: y: ). \\ \hline
+czyMoznaZeby &
+Zwraca true.\\ \hline
+PobierzZeby: n & 
+Pobiera n ¿elaznych zebów (opiera siê na metodzie pobierz z nadklasy).\\ \hline
+wypisz &
+Tekstowa informacja o polu. \\ \hline
+\end{longtable}
+
+Magazyn ze stalowymi zêbami, zaopatrzenie dla rycerzy-zjadaczy. 
+
+\subsection{Budowlany}
+
+\begin{longtable}{|p{2in}|p{4in}|}
+\hline
+{\bf Metody klasowe} & {\bf Opis}\\
+\hline
+\endhead
+newX: x y: y \par
+%ww: wygladwid \par
+%czas: czasreaktywacji \par
+poj: pojemnosc & 
+Dzia³a jak w nadklasie oraz dodatkowo ustala pojemno¶æ, ustawia atrybuty licznik, ilejest, itd... \\ \hline 
+\end{longtable}
+\begin{longtable}{|p{2in}|p{4in}|}
+\hline
+{\bf Metody instancyjne} & {\bf Opis}\\
+\hline
+\endhead
+initialize: ... & Inicjuje odpowiednie warto¶ci dla atrybutów (metoda wywo³ywana przez newX: y: ). \\ \hline
+czyMoznaCegly & 
+Zwraca true. \\ \hline 
+PobierzCegly: n &
+Pobiera n cegie³ (opiera siê na metodzie pobierz: z nadklasy).\\ \hline
+wypisz &
+Tekstowa informacja o polu. \\ \hline
+\end{longtable}
+
+Zaopatrzenie dla rycerzy-budowniczych w ceg³y. 
+
+\subsection{Teleport}
+
+\begin{longtable}{|p{2in}|p{4in}|}
+\hline
+{\bf Atrybuty} & {\bf Opis}\\
+\hline
+\endhead
+dok±d & 
+Istniej±cy obiekt tej klasy, b±d¼ nil. \\ \hline
+\end{longtable}
+\begin{longtable}{|p{2in}|p{4in}|}
+\hline
+{\bf Metody Klasowe} & {\bf Opis}\\
+\hline
+\endhead
+newX: x y: y \par 
+dokad: dokad & Tak jak w nadklasie ale dodatkowo ustawia atrybut dok±d. \\ \hline
+\end{longtable}
+\begin{longtable}{|p{2in}|p{4in}|}
+\hline
+{\bf Metody instancyjne} & {\bf Opis}\\
+\hline
+\endhead
+initialize: ... & Inicjuje odpowiednie warto¶ci dla atrybutów (metoda wywo³ywana przez newX: y: ). \\ \hline
+CzyMoznaTeleportowac & 
+Zwraca false, nie mo¿na teleportowaæ siê do drugiego teleportu.  \\ \hline
+Teleportuj &
+Przenosi rycerza na pole dokad. W zale¿no¶ci od powiedzenia siê zwraca true lub false. \\ \hline
+wypisz &
+Tekstowa informacja o polu. \\ \hline
+\end{longtable}
+
+Obiekt tej klasy teleportuje wchodz±cego rycerza do innego miejsca labiryntu. 
+
+%\newpage
+
+\subsection{Poza}
+
+\begin{longtable}{|p{2in}|p{4in}|}
+\hline
+{\bf Atrybuty} & {\bf Opis}\\
+\hline
+\endhead
+Istniej±cyObiekt & Atrybut klasowy! Istniej±cy obiekt tej klasy, b±d¼ nil. \\ \hline
+\end{longtable}
+\begin{longtable}{|p{2in}|p{4in}|}
+\hline
+{\bf Metody Klasowe} & {\bf Opis}\\
+\hline
+\endhead
+new  & 
+Tworzy obiekt tylko raz, przy powtórnym wywo³aniu zwraca obiekt tej klasy ju¿ istniej±cy. \\ \hline
+\end{longtable}
+\begin{longtable}{|p{2in}|p{4in}|}
+\hline
+{\bf Metody instancyjne} & {\bf Opis}\\
+\hline
+\endhead
+initialize: ... & Inicjuje odpowiednie warto¶ci dla atrybutów (metoda wywo³ywana przez newX: y: ). \\ \hline
+czyMoznaWejsc & 
+Zwraca false -- niemo¿na wyj¶æ poza planszê. \\ \hline
+czyMoznaTeleportowac &
+False -- nie da siê wyteleportowaæ z labiryntu. \\ \hline
+wybuch &
+Nic nie robi \\ \hline
+widoczne &
+Nic nie robi \\ \hline
+\end{longtable}
+
+Klasa reprezentuj±ca te pola które s± poza labiryntem. Poniewa¿ dla istoty gry nie s± ona wa¿ne dlatego 
+interpretuje je jako tylko jedno pole. Mianowicie wszystkie pola innych klas sk³adaj± siê na pola labiryntu a
+to pole na wszystko co jest poza labiryntem (czyli wystarczy tylko jeden obiekt tej klasy!). 
+Warto zauwa¿yæ, ¿e definiujê tak obiekt tej klasy, i¿ 
+istnieje tylko jeden taki obiekt klasy {\bf Poza}. 
+
+\subsection{Rycerz}
+
+\begin{longtable}{|p{2in}|p{4in}|}
+\hline
+{\bf Atrybuty} & {\bf Opis}\\
+\hline
+\endhead
+wyglad & Wygl±d rycerza. \\
+czyzaznaczony & Informuje czy rycerz ma w³asnie ruch. \\
+stan & Informuje czy rycerz szuka(1), znalazl(2), matrwy(0). \\
+\hline 
+\end{longtable}
+\begin{longtable}{|p{2in}|p{4in}|}
+\hline
+{\bf Metody klasowe} & {\bf Opis}\\
+\hline
+\endhead
+new & 
+Stworzenie rycerza.\\ \hline
+\end{longtable}
+\begin{longtable}{|p{2in}|p{4in}|}
+\hline
+{\bf Metody instancyjne} & {\bf Opis}\\
+\hline
+\endhead
+initialize: ... & Inicjuje odpowiednie warto¶ci dla atrybutów (metoda wywo³ywana przez newX: y: ). \\ \hline
+rusz: kierunek & 
+Wykonuje ruch rycerza we wskazanym kierunku. Zwraca true lub false w zale¿no¶ci od poprawno¶ci ruchu. \\ \hline
+smierc & 
+Rycerz ginie, \\ \hline
+pokaz &
+Wy¶wietlenie rycerza na polu (metoda wywo³ywana przez metode \emph{pokaz} w {\bf Polu}). \\ \hline
+wypisz &
+Tekstowa informacja o rycerzu. \\ \hline
+czyZyje &
+True lub false. Byæ mo¿e rycerz odpowiada ju¿ ostatni raz... \\ \hline
+\end{longtable}
+
+Klasa abstrakcyjna, zestaw podstawowych metod i atrybutów dziedziczonych przez podklasy.
+Nadklasa dla {\bf Nadzwyczajny}, {\bf Skoczek} i {\bf Wyposazony}. W metodzie \emph{rusz}: pojawia siê argument kierunek. 
+Definiujê go jako jedn± z liczb ${2,4,6,8}$ (2 -- dó³, 8 -- góra, 4 -- lewo, 6 -- prawo, tak jak na klawiaturze ,,numerycznej''). 
+Tak samo bêdzie zdefiniowany po¼niej w metodach \emph{skocz:}, \emph{zalataj:}, \emph{zjedz:}.
+
+\subsection{Nadzwyczajny}
+
+\begin{longtable}{|p{2in}|p{4in}|}
+\hline
+{\bf Atrybuty} & {\bf Opis}\\
+\hline
+\endhead
+cecha & Niewiarygodny upór. \\
+\hline 
+\end{longtable}
+\begin{longtable}{|p{2in}|p{4in}|}
+\hline
+{\bf Metody klasowe} & {\bf Opis}\\
+\hline
+\endhead
+new & 
+Stworzenie rycerza.\\ \hline
+\end{longtable}
+\begin{longtable}{|p{2in}|p{4in}|}
+\hline
+{\bf Metody instancyjne} & {\bf Opis}\\
+\hline
+\endhead
+initialize: ... & Inicjuje odpowiednie warto¶ci dla atrybutów (metoda wywo³ywana przez newX: y: ). \\ \hline
+wypisz &
+Tekstowa informacja o rycerzu. \\ \hline
+\end{longtable}
+
+Najdzielniejszy ze wszystkich, zaprawiony w bojach rycerz. W odró¿nienia od reszty cechuje go wyj±tkowy upór. 
+
+\subsection{Skoczek}
+
+\begin{longtable}{|p{2in}|p{4in}|}
+\hline
+{\bf Metody klasowe} & {\bf Opis}\\
+\hline
+\endhead
+new & 
+Stworzenie rycerza.\\ \hline
+\end{longtable}
+\begin{longtable}{|p{2in}|p{4in}|}
+\hline
+{\bf Metody instancyjne} & {\bf Opis}\\
+\hline
+\endhead
+initialize: ... & Inicjuje odpowiednie warto¶ci dla atrybutów (metoda wywo³ywana przez newX: y: ). \\ \hline
+skocz: kierunek & 
+Rycerz skacze we wskazanym kierunku (true/false). \\ \hline
+wypisz &
+Tekstowa informacja o rycerzu. \\ \hline
+\end{longtable}
+
+Rycerz niedo¶wiadczony, cechuje go zbytni entuzjazm i nierozwaga. 
+Potrafi skakaæ o 2 pola.
+
+%\newpage
+
+\subsection{Wyposazony}
+
+\begin{longtable}{|p{2in}|p{4in}|}
+\hline
+{\bf Atrybuty} & {\bf Opis}\\
+\hline
+\endhead
+iloscekw & Liczba posiadanych egzemplarzy ekwipunku rycerza. \\
+maxekw & Pojemno¶æ worka na ekwipunek rycerza.  \\
+\hline 
+\end{longtable}
+\begin{longtable}{|p{2in}|p{4in}|}
+\hline
+{\bf Metody klasowe} & {\bf Opis}\\
+\hline
+\endhead
+newIl: iloscekw & 
+Nadawanie stosownych wartosci atrybutom nowemu obiektowi tej klasy. \\ \hline
+\end{longtable}
+\begin{longtable}{|p{2in}|p{4in}|}
+\hline
+{\bf Metody instancyjne} & {\bf Opis}\\
+\hline
+\endhead
+initialize: ... & Inicjuje odpowiednie warto¶ci dla atrybutów (metoda wywo³ywana przez newX: y: ). \\ \hline
+wez & 
+Rycerz bierze z magazynu ekwipunek.\\ \hline
+\end{longtable}
+
+Nadklasa dla {\bf Budowniczy} i {\bf Zjadacz}. Abstrakcyjna klasa, grupuje tych rycerzy, 
+którzy posiadaj± dodatkowo jaki¶ ekwipunek. 
+
+\subsection{Budowniczy}
+
+\begin{longtable}{|p{2in}|p{4in}|}
+\hline
+{\bf Metody klasowe} & {\bf Opis}\\
+\hline
+\endhead
+newIl: iloscekw & 
+Stworzenie rycerza i nadanie mu w³a¶ciwych atrybutów. \\ \hline
+\end{longtable}
+\begin{longtable}{|p{2in}|p{4in}|}
+\hline
+{\bf Metody instancyjne} & {\bf Opis}\\
+\hline
+\endhead
+initialize: ... & Inicjuje odpowiednie warto¶ci dla atrybutów (metoda wywo³ywana przez newX: y: ). \\ \hline
+rusz: kierunek &
+Tak jak w nadklasie z tym, ¿e dodatkowo po wej¶ciu do magazynu nastêpuje ,,do³adowanie''. \\ \hline
+wezCegly & 
+Rycerz napelnia swój wór ceg³ami z magazynu. Zwraca tru lub false. \\ \hline
+zalataj: kierunek &
+Rycerz ³ata dziurê która znajduje siê we wskazanym kierunku. W wyniku zwraca true lub false 
+w zale¿no¶ci od wykonania pracy. \\ \hline
+wypisz &
+Tekstowa informacja o rycerzu. \\ \hline
+\end{longtable}
+
+Ryczerz z do¶wiadczeniem in¿ynierem. Dziêki swojej wiedzy potrafi szybko zabudowywaæ dziury.
+Posiada worek przystosowany do przenoszenia cegie³. 
+
+\subsection{Zjadacz}
+
+\begin{longtable}{|p{2in}|p{4in}|}
+\hline
+{\bf Metody klasowe} & {\bf Opis}\\
+\hline
+\endhead
+newIl: iloscekw & 
+Stworzenie rycerza i nadanie mu w³a¶ciwych atrybutów. \\ \hline
+\end{longtable}
+\begin{longtable}{|p{2in}|p{4in}|}
+\hline
+{\bf Metody instancyjne} & {\bf Opis}\\
+\hline
+\endhead
+initialize: ... & Inicjuje odpowiednie warto¶ci dla atrybutów (metoda wywo³ywana przez newX: y: ). \\ \hline
+rusz: kierunek &
+Tak jak w nadklasie z tym, ¿e dodatkowo po wej¶ciu do magazynu nastêpuje ,,do³adowanie''. \\ \hline
+wezZeby & 
+Rycerz uzupe³nia swój garnitur zêbów. (true/false). \\ \hline
+zjedz: kierunek &
+Rycerz zjada mur (true/false). \\ \hline
+wypisz &
+Tekstowa informacja o rycerzu. \\ \hline
+\end{longtable}
+
+Weteran wojenny, po pewnej bitwie dozna³ obra¿eñ szczêki. Wtedy to zbudowano dla niego stalow± szczêkê. 
+Dziêki czemu mo¿e na niej montowaæ specjalne zêby krusz±ce mury. 
+
+
+\subsection{Plansza}
+
+\begin{longtable}{|p{2in}|p{4in}|}
+\hline
+{\bf Atrybuty} & {\bf Opis}\\
+\hline
+\endhead
+pola & Kolekcja pól. \\
+\hline 
+\end{longtable}
+\begin{longtable}{|p{2in}|p{4in}|}
+\hline
+{\bf Metody klasowe} & {\bf Opis}\\
+\hline
+\endhead
+new & Tworzy obiekt z pust± kolekcja pól. \\ \hline
+\end{longtable}
+\begin{longtable}{|p{2in}|p{4in}|}
+\hline
+{\bf Metody instancyjne} & {\bf Opis}\\
+\hline
+\endhead
+initialize: ... & Inicjuje odpowiednie warto¶ci dla atrybutów (metoda wywo³ywana przez newX: y: ). \\ \hline
+dodaj: pole &
+Dodaje pole do kolekcji pól. \\ \hline
+s±siedzi: pole & 
+Okre¶lenie s±siadów zadanego pola. \\ \hline
+pole: pole kierunek: kierunek & 
+Zwraca pole we wskazanym kierunku od zadanego pola. \\ \hline
+wspX: x Y: y &
+Zwraca obiekt o podanych wspó³rzêdnych. \\ \hline
+tiktak &
+Uaktualnia planszê czyli zwiêksza liczniki (jak s±) u pól z kolekcji. \\ \hline
+\end{longtable}
+
+Obiekt reprezentuj±cy ¶wiat. Zatem i labirynt i wszystko co poza nim (obiekt klasy {\bf Poza})
+kierunek zdefiniowany jak wczesniej.
+
+\subsection{Wspolrzedne}
+
+\begin{longtable}{|p{2in}|p{4in}|}
+\hline
+{\bf Atrybuty} & {\bf Opis}\\
+\hline
+\endhead
+x & Wspó³rzedna x. \\
+y & Wspó³rzêdna y. \\
+\hline 
+\end{longtable}
+\begin{longtable}{|p{2in}|p{4in}|}
+\hline
+{\bf Metody klasowe} & {\bf Opis}\\
+\hline
+\endhead
+newX: x Y: y & nadaje warto¶ci wspó³rzêdnym. \\ \hline
+\end{longtable}
+\begin{longtable}{|p{2in}|p{4in}|}
+\hline
+{\bf Metody instancyjne} & {\bf Opis}\\
+\hline
+\endhead
+initialize: ... & Inicjuje odpowiednie warto¶ci dla atrybutów (metoda wywo³ywana przez newX: y: ). \\ \hline
+x & Zwraca atrybut x. \\ \hline
+y & Zwraca atrybut y. \\ \hline
+\end{longtable}
+
+Ka¿de pole ma wspó³rzêdne, która jest obiektem tej klasy.
+
+\subsection{Gra}
+
+\begin{longtable}{|p{2in}|p{4in}|}
+\hline
+{\bf Atrybuty} & {\bf Opis}\\
+\hline
+\endhead
+plansza & Plansza. \\
+rycerzeZywi & Rycerze ¿yj±cy. \\
+rycerzeOk & Rycerze którzy dotarli do legowiska. \\
+rycerzeMartwi & Rycerze martwi. \\ 
+\hline 
+\end{longtable}
+\begin{longtable}{|p{2in}|p{4in}|}
+\hline
+{\bf Metody klasowe} & {\bf Opis}\\
+\hline
+\endhead
+newPl: plansza Ryc: rycerze & 
+Inicjowany jest obiekt reprezentuj±cy grê\\ \hline
+\end{longtable}
+\begin{longtable}{|p{2in}|p{4in}|}
+\hline
+{\bf Metody instancyjne} & {\bf Opis}\\
+\hline
+\endhead
+initialize: ... & Inicjuje odpowiednie warto¶ci dla atrybutów (metoda wywo³ywana przez newX: y: ). \\ \hline
+zarzadzajGra. &
+Pêtla, która przydziela kolejno ruchy rycerzom, oraz ka¿dej tury aktualizuje plansze. \\ \hline
+ruch: rycerz &
+Czeka a¿ rycerz wykona prawid³owy ruch. \\ \hline
+tiktak &
+Uaktualniacz planszy. \\ \hline
+wczytajGre: plik &
+Wcztanie gry z pliku, w razie nie powodzenia zwraca false. \\ \hline
+\end{longtable}
+
+Obiekt tej klasy reprezentuje grê jak± toczy gracz, w tej klasie znajduj± siê metody czuwaj±ce nad 
+turowo¶cia gry, aby pola na planszy by³y aktualizowane, aby ka¿dy z rycerzy mia³ jeden ruch w turze, 
+aby gra mog³a siê zakoñczyæ gdy odpowiednia ilo¶æ rycerzy dojdzie do legowiska lub gdy wiadomo, 
+¿e to nie mo¿e mieæ miejsca. Byæ mo¿e w tej klasie pojawi± siê jeszcze jakie¶ pomocnicze metody. 
+
+\section{Interfejs}
+
+Interfejs gry bêdzie w pe³ni graficzny. Intuicyjno¶æ bêdzie siê opiera³a w g³ównej mierze na okienku statusu 
+gdzie program bêdzie powiadamia³ gracza o stanie gry, opisie zadanego pola i który rycerz ma ruch. Gracz bêdzie sterowaæ rycerzami 
+za pomoc± myszki klikaj±c w odpowiednie przyciski. 
+Obok wy¶wietlonej planszy z polami bêda siê znajdowaæ przyciski odpowiedzialne za ruch oraz w przypadku 
+budowniczego -- przycisk za³atania dziury, zjadacza -- przycisk zjedzenia muru, skoczka -- przycisk skoku.
+\\
+Interfejs bêdzie siê opiera³ na MVP --- Model View Presenter. Zaimplementowane zostan± równie¿ metody odpowiedzialne 
+za obs³ugê zdarzeñ. 
+
+% % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
+
+\end{document}

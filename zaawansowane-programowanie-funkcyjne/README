@@ -1,0 +1,311 @@
+0. Spis tresci.
+
+1.    Wprowadzenie
+2.    Podzial na moduly
+2.1.  Modul Socket
+2.2.  Modul Message
+2.3.  Modul Protocol
+2.4.  Modul User
+2.5.  Modul Box
+2.6.  Modul Server
+2.7.  Modul Client
+3.    Komunikacja
+4.    Kompilacja i uzycie
+4.1   Serwer
+4.2   Klient
+
+ ***
+
+1.    Wprowadzenie.
+
+Implementacja komunikatora w jezyku funkcyjnych ocaml. Schamat dzia³ania 
+opiera sie na jednym serwerze odbierajacym polaczenia od klientow. 
+
+ ***
+
+2.    Podzial na moduly.
+
+W programie zostalo wyroznionych 7 modulow. Do zarzadzania polaczeniami,
+sposobem komunikacji, protokolem komunikacji, przetrzymywaniem informacji
+o uzytkownikach oraz zarzadca zadaniami.
+
+ ***
+
+2.1   Modul Socket.
+
+Zarzadzanie polaczeniami. Modul dziala na polaczeniach TCP, kazde polaczenie 
+(procz nasluchowego) jest ustawiane w trybie nieblokujacym. Zatem na kazda 
+operacje jest ustawiony timeout. W razie jakiegos nie powodzenia rzucany jest
+odpowiedni wyjatek (Refused/Unreach/Disable/Timeout/Broken). 
+Jest mozliwosc zaaplikowania funkcji gdy pojawi sie nowe polaczenie (accept_with). 
+Podobnie dla gdy nawiaze sie polaczenie (connect_with).
+Modul umozliwia nastepujace operacje: 
+
+val read : Socket.t -> string
+val write : Socket.t -> string -> unit
+val writeable : Socket.t -> float -> bool
+val readable : Socket.t -> float -> bool
+val close : Socket.t -> unit
+val listener : string -> int -> Socket.t
+val connect : string -> int -> Socket.t
+val connect_with : (Socket.t -> 'a -> unit) -> 'a -> string -> int -> unit
+val accept : Socket.t -> Socket.t
+val accept_with : (Socket.t -> 'a -> unit) -> 'a -> stirng -> int -> int -> Thread.t list
+
+ ***
+
+2.2.  Modul Message.
+
+Sposob komunikacji przez wiadomosci. Wiadomosci sa postacji klucz=\wartosc\...
+Dane sa przesylane tekstowo. Typ wiadomosci jest lista par napisow klucz-
+wartosc. Klucz nie moze zawierac znakow '=', ' ' oraz '\', wartosc nie moze 
+zawierac jedynie '\'. Odostepniono miedzy innymi metode service, ktora 
+za argument przyjmuje polaczenie oraz liste funkcji. Funkcja odczytuje z polaczenia 
+wiadomosci i aplikuje ja do listy funkcji, jesli kazda z nich odpowie false badz
+ktoras rzuci wyjatkiem - funkcja sie konczy. Funkcja dziala w nieskonczonosc az
+do momentu bledu lub zerwania polaczenia.
+Modul umozliwia nastepujace operacje:
+
+val string_of_message : Message.t -> string
+val message_of_string : string -> Message.t
+val create : (string * string) list -> Message.t
+val get : Message.t -> string -> string
+val get_all : Message.t -> string -> string list
+val add : Message.t -> string -> string -> Message.t
+val read : Socket.t -> Message.t
+val write : Socket.t -> Message.t -> unit
+val service : Socket.t -> (Message.t -> Socket.t -> bool) list -> unit
+
+ ***
+
+2.3.  Modul Protocol.
+
+Modul udostepnia zbior mozliwych kluczy i wartosci. Przykladowo :
+Protocol.key_request = "Request"
+Protocol.key_reply = "Reply"
+Protocol.val_ok = "Ok"
+Protocol.val_notfound = "Notfound"
+...
+
+Z takich wlasnie kluczy i wartosci korzystaja przy komunikacji serwer i klient.
+Wiecej w rozdziale 3 - komunikacja.
+
+ ***
+
+2.4.  Modul User.
+
+Modul do zarzadzania zbiorem uzytkownikow. Operacje wykonuja sie pod mutexem
+ze wzgledu na watkowy charakter aplikacji. Umozliwione sa operacje rejestrowania
+nowego uzytkownika, wyrejestrowanie, odczyt/zapis listy uzytkownikow oraz pobranie
+statusu uzytkownika jak i zmiana jego statusu.
+
+type t = { 
+  nick   : string ;
+  pass   : string ;
+  sessid : string ;
+  descr  : string ;
+  stamp  : float  ;
+}
+
+val load : string -> unit
+val save : string -> unit
+val register : string -> string -> unit
+val unregister : string -> string -> unit
+val get : string -> User.t
+val on : string -> string -> string
+val off : string -> string -> unit
+val touch : string -> string -> unit
+val change : string -> string -> string -> unit
+
+Parametr `stamp` sluzy jako stempel kiedy ostatnio uzytkownik sie laczyl
+z serwerem. Paramert jest pomocny dla rozeznania sie czy uzytkownik jest
+dostepny. Uzytkownika uznaje sie za niedostepnego jesli ostatnia jego
+aktywnosc wynosi 0 lub gdy minela waznosc jego sesji (`stamp` jest stary).
+Funkcje off/touch/change wymagaja podania nicka i identyfikatora sesji.
+Jedynie przy register/unregister/on podajemy nicka i haslo.
+ 
+ ***
+
+2.5.  Modul Box.
+
+Modul do kolejkowania przesylanych wiadomosci miedzy uzytkownikami. Odczytujac z 
+polaczenia wiadomosc *chat* wysylana jest wlasnie do tego modulu, potem odpowiedni
+watek odczyta te wiadomosc z kolejki i przesle do uzytkownika. Kazdy uzytkownik ma 
+swoja kolejke, jesli trzeba - nawet nieaktywny. Funkcje take i push same
+dbaja o tworzenie/usuwanie stosownych kolejek jesli ich nie ma lub gdy
+sa juz zbedne.
+
+val take : string -> Message.t
+val push : string -> Message.t -> unit
+val length : string -> int
+
+ ***
+
+2.6.  Modul Server.
+
+Serwer uruchamia rownolegle watki do nasluchu. Zapytanie, ktore przychodzi do
+serwera jest identyfikowane i przekazywana jest odpowiednia funkcja
+obslugi. Serwer obsluguje zapytania `Register`, `Unregister`, `On`,
+`Off`, `Ping`, `Ask`, `Chat` i `Receive`. Gdy zapytanie zostanie
+obsluzone, serwer zamyka polaczenie. Istotnie rozni sie jedynie obsluga 
+polecenia `Receive` - klient pyta czy nie ma jakis wiadomosci do niego,
+jesli sa zostaja one przeslane w kolejny wiadomosciach. Po zamknieciu
+polaczenia, watek czeka na kolejne zlecenie.
+
+ ***
+
+2.7.  Modul Client.
+
+Klient co jakis czas odpytuje serwer czy nie ma jakis nowych wiadomosci
+do niego, za kazdym polaczeniem z serwerem odnawia swoja sesje. A tak¿e
+czyta ze standardowego wejscia co uzytkownik napisze i rozpowznaje
+polecenia : `register`, `unregister`, `on`, `off`, `ping`, `ask`,
+`chat` i `exit`.
+
+ ***
+
+5.    Komunikacja.
+
+Rejestracja uzytkownika:
+
+  "Request=\Register\ Nick=\uzytkownik\ Password=\***\ "
+
+  i w odpowiedzi dostaje:
+  "Reply=\Ok\ " lub "Reply=\Already\ " lub "Reply=\Invalid\ "
+
+Wyrejestrowanie uzytkownika:
+
+  "Request=\Unregister\ Nick=\nick\ Password\***\ "
+
+  i w odpowiedzi dostaje:
+  "Reply=\Ok\ " lub "Reply=\Notfound\ " lub "Reply=\Access\ " 
+  lub "Reply=\Invalid\ "
+
+Klient loguje sie do systemu za pomoca zapytania:
+
+  "Request=\On\ Nick=\nick\ Password=\***\ "
+
+  i w odpowiedzi dostaje:
+  "Reply=\Ok\ Session=\...\ " - identykikator sesji, to jego pomoca, nie
+  hasla, bedzie sie teraz wysylal zapytania.
+  lub "Reply=\Notfound\ " lub "Reply=\Access\ " 
+  lub "Reply=\Invalid\ " lub "Reply=\Already\ "
+
+Klient wyloguje sie z systemu za pomoca zapytania:
+
+  "Request=\Off\ Session=\nick\ Password=\...\ "
+
+  i w odpowiedzi dostaje:
+  "Reply=\Ok\ " lub "Reply=\Notfound\ " lub "Reply=\Invalid\ " lub "Reply=\Access\ "
+
+Zmiana swojego opisu:
+
+  "Request=\Ping\ Nick=\nick\ Session=\...\ Description=\opis\ "
+
+  i w odpowiedzi dostaje: 
+  "Reply=\Ok\ " lub "Reply=\Invalid\ " lub "Reply=\Timeout\ " lub "Reply=\Access\ "
+
+Zapytanie o innego uzytkownika:
+
+  "Request=\Ask\ Nick=\nick\ Session=\...\ About=\oniegopytam\ "
+
+  i w odpowiedzi dostaje:
+  "Reply=\Ok\ Nick=\oniegopytam\ Description=\opis\ Available=\true|false\ "
+  lub "Reply=\Notfound\ " lub "Reply=\Invalid\ " lub "Reply=\Timeout\ " lub "Reply=\Access\ "
+
+Wyslanie wiadomosci do innego uztkownika:
+
+  "Request=\Chat\ From=\nick1\ To=\nick2\ Session=\...\ Message=\tresc wiadomosci\ Time=\w sek kiedy\ "
+
+  i w odpowiedzi dostaje:
+  "Reply=\Ok\ Id=\identyfikator\ " lub "Reply=\Invalid\ " lub "Reply=\Access\ "
+
+Odbieranie wiadomosci:
+
+  "Request=\Receive\ Nick=\nick\ Session=\...\ "
+
+  i w odpowiedzi dostaje:
+  lub "Reply=\Notfound\ " lub "Reply=\Invalid\ " lub "Reply=\Timeout\ " lub "Reply=\Access\ "
+  lub "Reply=\Ok\ Size=\liczba\ "
+
+  Jesli `liczba` jest wieksza od zera to serwer na tym samym polaczeniu
+  przesle `liczba` nowych wiadomosci. Na kazde klient musi odpowiedziec
+  wiadomoscia zawierajaca klucz Reply. Serwer moze przysylac wiadomosci
+  postaci:
+
+  "Request=\Chat\ Id=\identyfikator\ From=\nick2\ To=\nick\ Message=\tresc wiadomosci\ Time=\w sek kiedy\ "
+
+
+Kolejnosc kluczy/wartosci w zapytaniach moze byc dowolna.
+
+ ***
+
+4.    Kompilacja i uzycie
+
+Program zostal napisany w srodowisku linuksowym z ocamlem w wersji 3.10.2.
+Kompilacja odbywa sie przez wywolanie :
+
+  $ make
+
+W wyniku otrzymamy cztery pliki wykonywalne - dwa serwery (server i serveropt) 
+i dwoch klientow (client i clientopt). Jeden rodzaj pliku wykonywalnego (server 
+i client) jest uzalezniony od posiadania programu ocamlrun. Drugi (serveropt i 
+clientopt) jest niezalezny od posiadania ocamla w systemie.
+
+ ***
+
+4.1   Serwer
+
+Uruchamiamy przez wywolanie:
+
+  $ ./server adres.ip liczba_watkow
+lub
+  $ ./serveropt adres.ip liczba_watkow
+
+Wymagana jest tez obecnosc pliku bazy danych uzytkownikow : "users.database".
+Jesli bedzie pusty to zadnego uzytkownika nie bedzie w bazie.
+Serwer obsluguje sygnaly SIGINT,SIGHUP,SIGTERM,SIGQUIT a SIGPIPE ignoruje.
+Serwer co jakis czas robi zrzut do pliku "users.database.autosave" listy
+uzytkownikow.
+
+ ***
+
+4.2   Klient
+
+Uruchamiamy klienta poleceniem :
+
+  $ ./client adres.ip.serwera 
+lub
+  $ ./clientopt adres.ip.servera
+
+Potem mamy do dyspozycji komendy:
+
+Rejestracja;
+  > register <nick> <haslo>
+Wyrejestrowanie:
+  > unregister <nick> <haslo>
+Zalogowanie:
+  > on <nick> <haslo>
+Wylogowanie:
+  > off
+Zmiana opisu:
+  > ping 
+  wpisz opis: <opis>
+Zapytanie o uzytkownika:
+  > ask <nick>
+Wyslanie wiadomosci:
+  > chat <nick>
+  wpisz tresc: <tresc>
+Pomoc:
+  > help
+Wyjscie z programu
+  > exit
+
+Klient/Serwer nie pozwola na:
+ - zalogowanie sie gdy juz jest sie zalogowanym. 
+ - wyrejestrowanie zalogowanego uzytkownika.
+ - zalogowanie sie gdy ten uzytkownik juz jest zalogowany
+
+ ***
+
+

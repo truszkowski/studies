@@ -1,0 +1,86 @@
+1. Modul altpinfo.
+
+		Podzielilem implementacje modulu na kilka plikow.
+	Pliki - `struct.h' i `struct.c', trzymaja definicje struktur
+	danych oraz czesc funkcji na nich operujacych ( w zasadzie 
+	jedynie oprocz open/release/write/read ). Definicje 
+	wspomnianych open/release... znajduja sie w pliku `module.c'.
+	Utworzylem rowniez plik `altpinfo.h'. Przechomuje on 
+	definicje `API_GET_FMT', `API_SET_FMT' i `API_GET_CURLEN'. 
+	Oddzielnie zdefiniowalem, aby `altpinfo_ctl.c' moglo 
+	miec dostep do tychze definicji. 
+	
+1.1. Format wypisywania informacji.
+
+	Do obslugi formatu zdeklarowana jest struktura
+		struct altpinfo_format_t altpinfo_fmt; 
+	Gdzie jako pola ma:
+		altpinfo_fmt_t * fmt;
+		char * fmt_charp;
+		rwlock_t access;
+		int outlen;
+	Pole fmt to latwiejszy zapis formatu "pid+uid+...",
+	rozpoznawac wtedy wystarczy po liczbie(char) nie po znakach(char *).
+	Spinlock access slozy do wykluczania typu czytelnicy
+	i pisaze. Otoz czytelnikami jest write(), ktory przetwarza 
+	zapytanie zgodnie z `fmt' a pisarzem jest operacja ioctl(), ktora 
+	modyfikuje `fmt'(dokladniej to - change_fmt()). Podczas wczytywania
+	nowego formatu `fmt' na `outlen' jest zapisywany szacowany rozmiar 
+	danych potrzebnych na zapis informacji.
+
+1.2. Obsluga buforow informacji.
+
+	Zdeklarowana jest nastepujaca struktura:
+		struct altpinfo_t {
+			char * buffer;
+			ssize_t buflen;
+			ssize_t bufreallen;
+			loff_t bufpos;
+			struct semaphore mutex, read, write;
+		};
+	oraz funkcje:
+		extern int free_altbuffer( struct altpinfo_t * );
+		extern int alloc_altbuffer( struct altpinfo_t *, ssize_t );
+	`buffer' to oczywiscie miejsce na informacje, `buflen' - ile 
+	informacje miejsca zajmuja, `bufpos' - ile z nich juz odczytano.
+	Semafory sluza do synchronizacji operacji write() i read(). 
+	Otoz, jesli cos jest zapisane to write() ma czekac, 
+	jesli nie ma juz czego czytac, to read() ma czekac.
+	`mutex 'to klasyczna ochrona danych. 
+		Dodatkowo, gdy na jednym deskryptorze chcemy wywolac kolejne 
+	operacje, to bufor jest alokowany tylko wtedy gdy sie okaze, ze
+	potrzeba wiekszego.
+
+1.3. Numer major.
+	
+		W wyniku testow nadalem oficjalny numer testowy 42, 
+	nie problem jednak uogolnic na dowolny numer(tzn generowany
+	dynamicznie podczas ladowania. Wystarczy zmienic 
+	w `module.c' wartosc altpinfo_major z 0 na 42 oraz
+	w altpinfo_load odkomentowac linie:
+	18:	#major=$(awk "\$2==\"$module\" {print \$1}" /proc/devices)
+	oraz zakomentowac:
+	19:	major=42
+	To jest taki sam schemat pozyskiwania numeru major jak w scull z 9 labow.
+
+2. Skrypty ladujace i usuwajace modul.
+
+		Skrypt `altpinfo_load' - laduje modul oraz tworzy 
+	urzadzenie `/dev/altpinfo'.
+
+		Skrypt `altpinfo_unload' - usuwa modul z pamieci 
+	oraz urzadzenie `/dev/altpinfo'.
+
+3. altpinfo_ctl
+
+		Umozliwia modyfikacje parametrow modulu poprzez 
+	API_GET_FMT oraz API_SET_FMT. Wywolanie bezparametrowe
+	zwroci na stdout warto¶æ obecnego `fmt', jesli podamy
+	argument zostanie on ustawiony jako nowy `fmt'.
+
+4. DEBUG
+
+		W `altpinfo/altpinfo.h' znajduje sie:
+		#define DEBUG_MODE 1
+	Gdy 1 - tryb debugowania wlaczony, 
+	gdy 0 - wylaczony. Domyslnie jest wylaczony.

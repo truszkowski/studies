@@ -1,0 +1,102 @@
+/* Piotr Truszkowski */
+
+1. Inicjalizacja zmiennych.
+
+  U¿ywane s± dwa semafory: uogólniony "praca" i binarny "dostep". 
+Binarny s³u¿y do ochrony zasobów, uogólniony do przyznawania 
+robotnikom kolejnych wyk³adników. Proces g³ówny inicjuje semafor 
+binarny "dostep" na 1 aby pewien robotnik móg³ zabraæ siê do 
+pracy. Równie¿ "praca" inicjowana jest na 1 -- na podstawie 
+dostepnej macierz o wyk³adniku 1 mo¿na policzyæ jedynie macierz
+o wyk³adniku 2. W pamiêci dzielonej wyro¿niamy zmienne:
+
+	int *wykladnik;     /* maksymalny wyk³adnik                     */
+	int *rozmiar;       /* rozmiar macierzy                         */
+	int *minimum;       /* mimalny wyk³adnik macierzy jaki mo¿emy   *
+	                     * w danej chwili policzyæ (to tylko nr     *
+											 * pozycji w tabMinimum nie sam wykladnik)  */
+	int *maxMinimum;    /* maksymalny wykladnik macierzy jaki       *
+	                     * mozemy w danej chwli policzyc            */
+	int *tabMinimum;    /* stablicowane wartosci wyk³adników wg     *
+	                     * kolejno¶ci wyliczania                    */
+	int ***tabMacierzy; /* tablica macierzy                         */
+	int *czynnik;       /* macierzy o jakim wykladniku potrzebujemy *
+	                     * aby wyliczyc zadany                      */
+
+
+  Sami robotnicy uzywaja równiez zmiennych:
+	
+	int tmp;            /* zmienna pomocnicza przechowywany na niej *
+	                     * bedzie minimum                           */
+	int nrMacierzy;     /* wykladnik macierzy, ktora bedzie liczona */
+	int nrM1;           /* wykladnik macierzy za pomoca, ktorej     *
+	                     * bedziemy wyliczac nastepna               */
+	int nrM2;           /* -- // -- -- // -- -- // -- -- // --      */
+	int iluZagonic;     /* do mozliwosci obliczenia ilu nowych      *
+	                     * wykladnikow przyczynil sie robotnik      */
+	
+	Powy¿sze zmienne u³atwiaj± wspólbierzna prace wszystkich robotnikow 
+gdyz wiekszosc zmiennych jest pamietana tymczasowo, wiec niema potrzeby
+chronic ich semaforami.
+
+
+2. Dzia³anie.
+
+  Wszystcy robotnicy dzia³aja w ten sam sposób. Ka¿dy z nich wykonuje 
+operacje PU(praca); Pod ochron± semaforu binarnego "dostep" sprawdzamy 
+czy nie jest koniec pracy oraz czy nie jestesmy ostatnim pracujacym 
+robotnikiem, jak tak to otwieramy futrke aby Ci co skonczyli mogli wyjsc.
+Jesli jednak minimum jest mniejsze od wykladnika to bedziemy wyliczac 
+macierz o wykladniku jaki pokazuje nam tabMinimum[minimum]. Na oddzielnej 
+tablicy mamy rowniez policzone z mnozac jakie macierza otrzymamy nasza 
+szukana. Majac te dane wychodzimy z sekscji krytycznej i przystepujemy 
+do liczenia macierzy. Zauwazmy, ze zapisu wyniku nie musimy strzec 
+semaforami gdy¿, wiemy ze to my liczymy te macierz poraz pierwszy i 
+zadna inna macierz jaka moze byc w tej chwili licznona wspolbierznie 
+nie moze sie odwolywac do niej gdyzwlasnie niejest zapisana w tablicy
+reprezentujacej z czego mozna liczyc inne -- gdyz te informacje dodajemy
+dopiero gdy macierz zostanie obliczona. I tak wlasnie wyodrebnienie 
+jakich to nowych wykladnikow mozna teraz policzyc jak obliczylismy nasza 
+macierz. Te dane zapisujemy juz pod ochrona semafora binarnego 
+"dostep". Nastepnie jeszcze tylko zwiekszamy wartosc semafora "praca" o
+liczbe odpowiadajaca liczbie macierzy, ktore mozna wyliczyc za pomoca 
+wyliczonej przed chwila macierzy a wczesniej niemozna bylo takowej 
+macierzy obliczyc. Po tej operacji obrot petli konczy sie.
+
+
+3. Schemat u¿ywania semaforów.
+
+  Poni¿ej znajduje siê pseudokod ilustrujacy dzialanie semaforow:
+	
+while true do
+	PU(praca,1);
+	PB(dostep);
+	if minimum > wykladnik then 
+	begin
+		VB(dostep);
+		VU(praca,1); {pilnujemy aby Ci co pozniej skonczyli rozwniez mogli wyjsc}
+		exit();
+	end
+	else if minimum = wykladnik then
+	  V(praca, 1); {jestesmy ostatni otwieramy sobie futrke aby pozniej wyjsc}
+	minimum := minimum + 1;
+	VB(dostep);
+	Obliczamy_macierz_o_stosownym_wykladniku;
+	PB(dostep);
+	Wyznaczamy_jakie_teraz_mozna_liczyc;
+	VB(dostep);
+	VB(praca,n); { zwiekszamy wartosc semafora o n nowych gotowych 
+	  do liczenia macierzy }
+end while;
+
+  Zatem przewaznie wykonujemy nastepujacy ciag opeacji semaforowych:
+	
+PU(praca,1), PB(dostep), VB(dostep), PB(dostep), VB(dostep), VU(praca).
+	
+  Istnieje mozliwosc aby zrezygnowac z dwukrotnego uzycia semafora 
+binarnego, jednak wtedy tracimy mozliwosc wspolbierznego obliczania 
+macierzy i wtedy w istocie wystarczylby jeden semafor binarny. 
+  Ze wzgledu na oszczêdno¶æ operacji semaforowych u¿ywam semaforu 
+uogolnionego aby za jednym razem zwiêkszyc jego wartosc o N zamiast 
+wykonywania N krotnie operacji podnoszenia semafora.
+

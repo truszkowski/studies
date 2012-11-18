@@ -1,0 +1,442 @@
+#!/bin/bash
+
+AUTHOR="Piotr Truszkowski, pt209223"
+# pliki konfiguracyjne/logi
+CONF="$HOME/.mprc"
+LOG="$HOME/monitor.log"
+# nazwa programu
+process=
+# argumenty programu
+arglist=
+# systemy na ktorych maja/moga dzialac monitory
+basesystems=
+# tablica aktywnych systemow 0 - nie-akt, 1 - akt.
+activesys=
+# id systemu, tego tutaj
+idsystems=
+# kto ostatnio wysylal komunikat BUSY/NEXT (potrzebne gdy FREE maja opoznienie)
+busy=
+# zmienne calkowitoliczbowe (ile czekac, ile komunikatow)
+declare -i skips
+declare -i pause
+declare -i line
+line=0
+pause=0
+# zeby bo 3 okrazeniach sie wycofac
+declare -i faillimit
+faillimit=3
+failsys=
+
+sendmsg() {
+	echo "$1:` date -R`" >> $LOG
+}
+
+cleanup() { # co posprzatac gdy przyjdzie sygnal
+	echo "(MONITOR) : Przechwycono SYGNAL!"
+	if [ "$busy" != `hostname` ]; then
+		sendmsg "FREE:"`hostname`
+	else
+		sendmsg "BUSY:"`hostname`
+# nie zabijam procesu
+#		if jobs | grep -q "$process" ; then
+#			echo "(MONITOR) : Wylaczam $process!"
+#			kill `jobs -p`
+#		fi
+	fi
+	
+	while true
+	do
+		if [ $line -lt `cat $LOG | wc -l` ]; then
+
+			line=$(($line+1))
+			message=`cat $LOG | head -n $line | tail -n 1`
+			
+			if echo $message | grep -q "\(^FREE\|^BUSY\)" ; then
+# czy aby nie padl jakis monitor (bez dzialajacego programu)?
+				data=`echo $message | cut -f 2 -d ":"`
+				echo "(MONITOR) : Monitor na systemie $data przestal dzialac!"
+				deletesys "$data"
+				if [ "$data" = "`hostname`" ]; then
+# tutaj musimy w koncu wejsc bo wyslalismy komunikat, ze odchodzimy!
+					break; 
+# a to co potem ktos wysylal to nas nie obchodzi
+				fi
+			elif echo $message | grep -q "^JOIN" ; then
+# czy aby ktos nie dolaczyl?
+				data=`echo $message | cut -f 2 -d ":"`
+				echo "(MONITOR) : Oho, $data do nas dolaczyl!"
+				insertsys $data
+			else # cos nie juz istotnego
+				echo "(MONITOR) : pomijam komunikat:"
+				echo "(MONITOR) : =>|$message|<="
+			fi
+		fi
+	done
+	
+# a gdy jestesmy ostatni...
+	if [ "$activesys" = "0" ]; then
+		echo "(MONITOR) : Jestem ostatni, zamykam."
+		sendmsg "DONE:"`hostname`":$(($line+1))"
+	fi
+	
+	exit 0
+}
+
+checkprocess() { # sprawdzenie czy program dziala
+	if [ "$skips" = "-1" ]; then
+		if ps xu | grep -v "grep" | grep -q "^`whoami`.*$process $arglist\$" ; then		
+			echo "(MONITOR) : Program dziala..."
+		else
+			echo "(MONITOR) : Oops, program przestal dzialac..."
+			sendmsg "NEXT:`hostname`"
+		fi
+	fi
+}
+
+executeprocess() { # uruchom program
+	if [ "$skips" = "-1" ]; then
+		if ps xu | grep -v "grep" | grep -q "^`whoami`.*$process $arglist\$" ; then
+			echo "(MONITOR) : Oo! Program juz dziala, nieuruchamiam."
+		else 
+			echo "(MONITOR) : Uruchamiam: $process $arglist"
+			$process $arglist < /dev/null 1> /dev/null 2> /dev/null &
+			# a teraz czy sie dobrze wykonal program.
+			if ps xu | grep -v "grep" | grep -q "^`whoami`.*$process $arglist\$" ; then		
+				echo "(MONITOR) : Program dziala..."
+			else
+				sendmsg "FAIL:`hostname`:$idsystems:${failsys[$idsystems]}"
+				echo "(MONITOR) : Blad wykonania!"
+			fi
+		fi
+	fi
+}
+
+deletesys() { # usuwanie nieaktywnych sys z list aktywnych
+	for it in `seq \`echo $basesystems | wc -w\``; do
+		item=`echo $basesystems | cut -f $it -d " "`
+		if [ "$item" = "$1" ]; then
+			activesys[$it]=0
+		fi
+	done
+# zmiejszamy liczbe aktywnych
+	activesys[0]=$((${activesys[0]}-1))
+}
+
+insertsys() {
+	for it in `seq \`echo $basesystems | wc -w\``; do
+		item=`echo $basesystems | cut -f $it -d " "`
+		if [ "$item" = "$1" ]; then
+			activesys[$it]=1
+			failsys[$it]=0
+		fi
+	done
+# zwiekszamy liczbe aktywnych
+	activesys[0]=$((${activesys[0]}+1))
+}
+
+nextbusy() { # ustawia busy na nastepnego na liscie
+	if [ "${activesys[0]}" = "1" ]; then
+		return; # ja i tylko ja
+	fi
+	
+	busynext=0 # szukamy, ktory pracowal
+	for it in `seq \`echo $basesystems | wc -w\``; do
+		if [ "${activesys[$it]}" = "1" ]; then
+			item=`echo $basesystems | cut -f $it -d " "`
+			if [ "$item" = "$busy" ]; then
+				busynext=1 # nastepny aktywny ma zaczac prace
+			elif [ $busynext -eq 1 ]; then
+				busy="$item" # zaczyna nastepny
+				return;
+			fi
+		fi
+	done
+	# trzeba poszukac "modulo" pierscien
+	for it in `seq \`echo $basesystems | wc -w\``; do
+		if [ "${activesys[$it]}" = "1" ]; then
+			busy=`echo $basesystems | cut -f $it -d " "`
+			return;
+		fi
+	done
+	
+	return;
+}
+
+clearfails() { # czyscimy bledy wykonan
+	failsys[0]=0
+	for i in `seq \`echo $basesystems | wc -w\``; do
+		failsys[$i]=0
+	done
+}
+
+nextfail() { # $1 mial blad wykonania
+	failsys[$1]=$(($2+1))
+	for i in `seq \`echo $basesystems | wc -w\``; do
+		if [ "${activesys[$i]}" = "1" ]; then
+			if [ ${failsys[$i]} -lt $faillimit ]; then
+				return;
+			fi
+		fi
+	done
+	echo "(MONITOR) : Przekroczony limit bledow wykonan."
+	echo "(MONITOR) : Koncze prace!"
+	exit 1;
+}
+
+prepare() { # Logi do ~/monitor.log
+	if find "$LOG" 1> /dev/null 2> /dev/null ; then
+		if [ ! -r "$LOG" ]; then
+			echo "(MONITOR) : Niemoge czytac z logow!"
+			exit 1
+		fi 
+		if [ ! -w "$LOG" ]; then
+			echo "(MONITOR) : Niemoge tworzyc logow!"
+			exit 1
+		fi 
+	else 
+		if ! echo > "$LOG" 2> /dev/null ; then
+			echo "(MONITOR) : Niemoge tworzyc logow!"
+			exit 1
+		fi
+	fi
+	
+	skips=0
+	line=0
+	if grep -q "DONE:" $LOG ; then
+		line=`grep "^DONE:" $LOG | tail -n 1 | cut -f 3 -d ":"`
+	fi
+		lines=`cat $LOG | wc -l`
+		lines=$(($lines-$line))
+		skips=`tail -n $lines $LOG | grep -c "^JOIN:\`hostname\`"`
+	
+	
+	if [ ! -r "$CONF" ]; then	
+		echo "(MONITOR) : Brak dostepu do ~/.mprc!"
+		exit 1
+	fi
+	if [ 2 -gt `cat $CONF | wc -l` ]; then
+		echo "(MONITOR) : Niekompletny plik konfiguracyjny!"
+		exit 1
+	fi
+}
+
+loadprocess() {
+	echo "(MONITOR) : Wczytywanie sekcji PROCESS..."
+	argnum=`head -n 1 $CONF | cut -f 2 | wc -w`
+	if [ "$argnum" = "0" ] || [ "`head -n 1 $CONF | cut -f 1`" != "PROCESS" ] || 
+	[ "`head -n 1 $CONF | cut -f 3 | wc -w`" != "0" ]; then
+		echo "(MONITOR) : Sekcja PROCESS jest blednie podana!" 
+		echo "(MONITOR) : PROCESS{tab}{progs}({spacja>{arg})*"
+		exit 1
+	fi 
+	for i in `seq $argnum`; do
+		item=`head -n 1 $CONF | cut -f 2 | cut -f $i -d " "`
+		if [ "$item" = "" ]; then
+			echo "(MONITOR) : Sekcja PROCESS jest blednie podana!" 
+			echo "(MONITOR) : PROCESS{tab}{progs}({spacja>{arg})*"
+			exit 1
+		elif [ $i -eq 1 ]; then
+			process=`printf "%s" $item`
+		elif [ $i -gt 1 ]; then
+			arglist=`printf "%s %s" $arglist $item`
+		fi
+	done
+	echo "(MONITOR) : Monitorowany program: $process $arglist" 
+}
+
+loadtime() {
+	echo "(MONITOR) : Wczytywanie sekcji TIME..."
+	if [ "`head -n 3 $CONF | tail -n 1 | cut -f 2 | wc -w`" != "1" ] ||
+		[ "`head -n 3 $CONF | tail -n 1 | cut -f 1`" != "TIME" ] ||
+		[ "`head -n 3 $CONF | tail -n 1 | cut -f 3 | wc -w`" != "0" ]; then
+		echo "(MONITOR) : Sekcja TIME jest blednie podana!"
+		echo "(MONITOR) : TIME{tab}{czas}!"
+		exit 1
+	fi
+	pause=`head -n 3 $CONF | tail -n 1 | cut -f 2`
+	if [ $pause -eq 0 ]; then
+		echo "(MONITOR) : Niedobrze! Czas oczekiwania ustawiony na 0!"
+		exit 1
+	fi
+	echo "(MONITOR) : Czestotliwosc monitorowania: $pause"
+}
+
+loadsystems() {
+	amihere="NieJestem"
+	echo "(MONITOR) : Wczytywanie sekcji SYSTEMS..."
+	
+	argnum=`head -n 2 $CONF | tail -n 1 | cut -f 2 | wc -w`
+	if [ "$argnum" = "0" ] || [ "`head -n 2 $CONF | tail -n 1 | cut -f 1`" != "SYSTEMS" ] || 
+	[ "`head -n 2 $CONF | tail -n 1 | cut -f 3 | wc -w`" != "0" ] ; then 
+		echo "(MONITOR) : Sekcja SYSTEMS jest blednie podana!" 
+		echo "(MONITOR) : SYSTEMS{tab}{sys}({spacja}{sys})*"
+		exit 1 
+	fi
+	
+	basesystems=`head -n 2 $CONF | tail -n 1 | cut -f 2`
+	
+	activesys[0]=0 # na poczatku nikogo nie ma
+	failsys[0]=0   # wiec nie ma tez bledow wykonan
+	for i in `seq $argnum`; do 
+		item=`head -n 2 $CONF | tail -n 1 | cut -f 2 | cut -f $i -d " "`
+		activesys[$i]=0
+		failsys[$i]=0
+		if [ "$item"  = "" ]; then
+			echo "(MONITOR) : Sekcja SYSTEMS jest blednie podana!" 
+			echo "(MONITOR) : SYSTEMS{tab}{sys}({spacja}{sys})*"
+			exit 1
+		elif [ $item = `hostname` ]; then
+			amihere="Jestem"
+			idsystems=$i
+		fi
+	done
+	
+	if [ $amihere = "NieJestem" ]; then 
+		echo "(MONITOR) : Nie ma mnie na liscie systemow,"
+		echo "(MONITOR) : Koncze prace!"
+		exit
+	fi
+}
+
+
+getmessages() {
+	while true
+	do
+		if [ $line -lt `cat $LOG | wc -l` ]; then
+
+			line=$(($line+1))
+			message=`cat $LOG | head -n $line | tail -n 1`
+			
+			if echo $message | grep -q "^FREE" ; then
+# czy aby nie padl jakis monitor (bez dzialajacego programu)?
+				data=`echo $message | cut -f 2 -d ":"`
+				echo "(MONITOR) : Nieaktywny monitor na systemie $data przestal dzialac!"
+				if [ "$data" = "$busy" ]; then
+					nextbusy
+					if [ $busy = `hostname` ]; then
+						echo "(MONITOR) : Oho, powinienem wlaczyc monitorowanie programu."
+						executeprocess
+					fi
+				fi
+				deletesys "$data"
+			elif echo $message | grep -q "^BUSY" ; then
+# czy aby nie padl jakis monitor z dzialajacym programem?
+				data=`echo $message | cut -f 2 -d ":"`
+				echo "(MONITOR) : Aktywny monitor na systemie $data przestal dzialac!"	
+				nextbusy
+				if [ $busy = `hostname` ]; then
+					executeprocess
+				fi
+				deletesys "$data"
+				clearfails
+			elif echo $message | grep -q "^NEXT" ; then
+# czy aby nie padl program u ktorego monitora?
+				data=`echo $message | cut -f 2 -d ":"`
+				echo "(MONITOR) : Program na systemie $data przestal dzialac!"
+				nextbusy
+				if [ $busy = `hostname` ]; then
+					echo "(MONITOR) : I kolej na mnie, aby uruchomic program..."
+					executeprocess
+				fi
+				clearfails
+			elif echo $message | grep -q "^JOIN" ; then
+# czy aby ktos nie dolaczyl?
+				data=`echo $message | cut -f 2 -d ":"`
+				echo "(MONITOR) : Oho, $data do nas dolaczyl!"
+				if [ "$data" = `hostname` ]; then
+					skips=$(($skips-1))
+				fi
+				if [ "$busy" = "" ]; then 
+					busy=$data
+					if [ "$data" = `hostname` ] && [ "$skips" = "-1" ]; then	
+						echo "(MONITOR) : Jako pierwszy z monitorow uruchamiam program."
+						executeprocess
+					fi
+				fi
+				insertsys $data
+			elif echo $message | grep -q "^FAIL" ; then
+# czy aby sie u kogos niewykonal program?
+				data=`echo $message | cut -f 2 -d ":"`
+				echo "(MONITOR) : Oho, na $data blad wykonania!"
+				nextfail `echo $message | cut -f 3 -d ":"` `echo $message | cut -f 4 -d ":"`
+				if [ "$data" != "$busy" ]; then
+					echo "(MONITOR) : O! Na $data byl uruchomiony program a dziala przeciez na $busy!"
+					echo "(MONITOR) : Nie reaguje, ignoruje..."
+				else
+					nextbusy
+					if [ $busy = `hostname` ]; then
+						echo "(MONITOR) : I kolej na mnie, aby uruchomic program..."
+						executeprocess
+					fi
+				fi
+			elif echo $message | grep -q "^RUNN" ; then
+# czy aby ktos nie chcial sie za wiele razy uruchomic?
+				data=`echo $message | cut -f 2 -d ":"`
+				echo "(MONITOR) : Oho, na $data ktos chcial sie dwa razy uruchomic!"
+			elif echo $message | grep -q "^DONE" ; then
+# O!?
+				data=`echo $message | cut -f 2 -d ":"`
+				echo "(MONITOR) : Oo, zakonczyly sie wszystkie monitory a ja nie!?"
+			else
+# cos nie oczekiwanego
+				echo "(MONITOR) : Nieznany typ komunikatu!"
+				echo "(MONITOR) : =>|$message|<="
+				echo "(MONITOR) : Pomijam, ide dalej..."
+			fi
+		else
+			break;
+		fi
+	done
+}
+
+# przygotowania...
+prepare
+
+# Czy aby nie dziala juz jakis monitor?
+psinfo=`ps cux | grep -c "\`whoami\`.*monitor"`
+if [ "$psinfo" != "2" ]; then # 2, bo "JA" i `polecenie`
+	echo "(MONITOR) : Tutaj dziala juz jakis monitor!"
+	echo "(MONITOR) : Wycofuje sie!"
+	sendmsg "RUNN:`hostname`"
+	exit 1
+fi
+
+# wczyt
+loadprocess	
+loadtime 
+loadsystems
+
+# cleanup czeka na sygnal...
+trap cleanup 0
+
+sendmsg "JOIN:`hostname`"
+echo "(MONITOR) : Rozpoczynam monitorowanie!"
+
+### GLOWNA PETLA SKRYPTU
+
+while true 
+do
+	echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+	sleep $pause
+	
+# sprawdzamy dzialanie procesu
+	if [ "$busy" = `hostname` ]; then
+		checkprocess
+	fi
+
+# sprawdzamy co tam u monitorow slychac...
+	getmessages
+	
+# podsumowywujac...
+	if [ "$skips" != "-1" ]; then
+		echo "(MONITOR) : Odtwarzam, stan($skips)..."
+	fi
+	echo -en "(MONITOR) : zajety jest: $busy,\n(MONITOR) : aktywne systemy: "
+	for it in `seq \`echo $basesystems | wc -w\``; do
+		if [ "${activesys[$it]}" = "1" ]; then
+			echo -n "`echo $basesystems | cut -f $it -d " "` "
+		fi
+	done
+	echo
+	
+done

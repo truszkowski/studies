@@ -1,0 +1,153 @@
+Piotr Truszkowski
+
+* ZMIANY W KODZIE JADRA LINUXA *
+
+
+	Zmieni³em pliki:
+		include/linux/sched.h, include/linux/init_task.h, 
+		kernel/fork.c, kernel/exit.c,
+		fs/proc/base.c, fs/proc/proc_misc.c,
+		fs/read_write.c
+
+	Wszystkie zmiany rozpoczynam nag³ówkiem:
+	/**** pt209223.begin ****/
+	i koñczê nag³ówkiem:
+	/**** pt209223.end ****/
+	Wyj±tek stanowi makro INIT_TASK w `include/linux/init_task.h'.
+	Wszystko to w patchu iolimits.patch. Instalacja go:
+		[.../linux-2.6.17.13]# patch -p1 < iolimits.patch
+	Instalacjê tak± przeprowadza³em u siebie w domu na:
+		Slackware 10.2.
+
+
+* NOWE STRUKTURY *
+
+
+		Ka¿dy proces zna na³o¿one na siebie limity operacji na 
+	urz±dzeniach blokowych. Struktura task_struct zosta³a na 
+	te potrzeby rozszerzona.
+	
+	struct task_struct {
+		...
+		struct task_iolimit iolimits;
+	};
+	
+	struct task_iolimit {
+		unsigned int rlen, wlen;
+		struct iolimit_item * rlimit, * wlimit;
+		char * rbuf, * wbuf;
+		unsigned int rbuflen, wbuflen;
+		struct semaphore rlock, wlock;
+	};
+	
+	struct iolimit_item {
+		int major, minor, limit, used;
+		struct timespec timestamp;
+		spinlock_t lock;
+	};
+	
+	(w `include/linux/sched.h')
+	
+		Struktura task_iolimit ma z jednej strony rlimit i wlimit 
+	to na dane faktycznie u¿ywane w jadrze do limitowania operacji.
+	A tak¿e rbuf i wbuf s³u¿±ce jedynie jako bufory reprezentuj±ce
+	pliki /proc/pid/writelimit oraz /proc/pid/readlimit. Operacja 
+	read na nich po prostu zwraca odpowiedni bufor. Natomiast write
+	najpierw dodaje limity do rlimit/wlimit a nastêpnie modyfikuje
+	odpowiedni bufor. Za rozmiar rlimit, wlimit, rbuf, wbuf przyj±³em
+	PAGE_SIZE. Je¶li kto¶ zechce za³o¿yæ zbyt wiele limitów, operacja
+	write na /proc/pid/*limit zwróci b³±d. Dla buforów nie jest to
+	sprawdzane. Przyjmuje i¿ PAGE_SIZE/sizeof(struct iolimit_item)
+	jest wystarczaj±cym rozmiarem na jedn± liniê postaci:
+		major minor limit\n
+	Dok³adniej co do czego potrzebne - przy opisie algorytmu.
+		
+		Zdefiniowa³em globalna zmienna iolimits_mode, mówi ona 
+	czy ograniczenia s± globalnie w³±czone czy nie. Zmienna 
+	iolimits_lock s³u¿y do ochrony zmiennej(rwlock_t). 
+		
+		Na potrzeby dodania nowych plików w /proc zdefiniowa³em
+	odpowiednie struktury obs³ugi operacji write() i read().
+	O tym w `fs/proc/base.c'(pliki /proc/pid/*limit) oraz
+	`fs/proc/proc_misc.c'(plik /proc/iolimits). 
+
+
+* TWORZENIE PROCESU, FORK(), EXIT()... *
+
+	
+		Aby nowo wprowadzone struktury poprawnie inicjalizowaæ, 
+	trzeba by³o zmodyfikowaæ INIT_TASK oraz fork(). W makrze INIT_TASK 
+	pozycje s± ustawiane na zera, tj d³ugo¶ci buforów, wielko¶ci 
+	tablic na 0 a same wska¼niki na NULL (w `include/linux/init_task.h'). 
+
+		Podczas fork() jest wywo³ywana procedura copy_process() to
+	w niej przekopiowuje dane z macierzystego procesu - w my¶l
+	dziedziczenia limitów (w `kernel/fork.c'). Proces potomny zgodnie
+	z faq14 nie dziedziczy tymczasowych informacji o ograniczeniach.
+	
+		Nie nale¿y zapominaæ o odpowiednim wyczyszczeniu pozycji na 
+	koniec ¿ycia procesu. Tote¿ w exit(), dok³adniej w do_exit().
+	Wszystko co by³o alokowane jest tam zwalniane.
+
+
+*  ALGORYTM OGRANICZANIA PRZEPUSTOWO¦CI *
+	
+
+		Ka¿dy limit ma zmienne `stamp' (struct timespec), która
+	oznacza kiedy rozpocz±³ siê obecny kwant czasu. Kwant czasu
+	ustali³em na 1024 milisekundy, (mo¿na manipulowaæ tym 
+	parametrem - jest zdefiniowany jako makro. Z kwantem czasu jest
+	zwi±zana zmienna `used', mówi ona ile mamy bajtów do dyspozycji w
+	tym kwancie czasu(dok³adniej to te warto¶æ trzeba na koniec 
+	przeskalowaæ wzglêdem d³ugo¶ci kwantu - w przypadku j.w. 
+	wspó³czynnik skalowania = 1). Dla wygody przyjmuje, i¿ 
+	1024msek = 1sek. 
+		To w³a¶nie na podstawie `used' i `stamp' wyliczane jest 
+	ile przeznaczyæ czasu na spowolnienie read/write. Zanim jednak
+	proces za¶nie by wyrównaæ prêdko¶æ do za³o¿onego limitu, 
+	dostaje na wej¶ciu (jako parametr read/write) ile ma danych zapisaæ.
+	Je¶li rozmiar danych jest stosunkowo du¿y w porównaniu do 
+	za³o¿onego limitu zostaje on podzielony na kilka mniejszych 
+	porcji (zdefiniowa³em jako makro, ze bêdzie to 2^3 = 8 porcji). 
+	Ka¿dy z fragmentów bêdzie obs³ugiwany jakby by³ oddzielna
+	operacja(tyle, ze nie s± ju¿ sprawdzane o dostêpie, itp co 
+	s± wykonywana na pocz±tku ka¿dego read/write'a. Pozwala 
+	to roz³o¿yæ obci±¿enie na kilka operacji zapisu/odczytu.
+	Po ka¿dej operacji zapisu proces jest usypiany na okre¶lona 
+	ilo¶æ czasu. Do jego okre¶lenia s³u¿y funkcja get_sleep()
+	zwracaj±ca na ile czasu ma proces zasn±æ by wyrównaæ do limitu.
+	Do przyznawania tego¿ czasu korzystam z takiego oto wzoru:
+	
+	t = (TIMEOUT - time()) * (count) / (used + count);
+	
+	w uproszczeniu - time() zwraca ile czasu minê³o od pocz±tku
+	"epoki". Jak time() przekracza dlugo¶æ "epoki" jest ustawiany 
+	nowy kwant. Iloraz (count)/(used + count) mówi ile proces
+	wykona³ z tego co pozosta³o. Dodatkowo jak used = 0, 
+	zwracany jest czas (TIMEOUT - time()) -- proces ¶pi do koñca
+	"epoki" bo wszystko co mo¿na by³o zapisaæ zosta³o zapisane.
+	Po zmianie "epoki" nadawany jest nowy `stamp' i nowe `used'.
+	
+		Wprowadzenie algorytmu wymaga³o modyfikacji funkcji:
+	vfs_read(), vfs_write() oraz do_readv_writev(). 
+	Do wykrywania czy limit jest na³o¿ony s³u¿y funkcja 
+	check_iolimits_read()/check_iolimits_write() jest ona wywo³ywana
+	tylko raz w pesymistycznym przypadku wymaga przejrzenia 
+	wszystkich ograniczeñ. Mimo to trzeba sprawdzaæ czy w trakcie
+	wykonywania operacji kto¶ nie zmieni³ limitu. Do tego s³u¿y 
+	funkcja validate_read/write sprawdza czy numery major i minor 
+	siê zgadzaj± i wczytuje raz jeszcze limit - operacje kosztu sta³ego
+	znany jest wska¼nik na strukturê z limitem. Struktura z limitem 
+	nie zmienia swojego miejsca w pamiêci jednak¿e mo¿e byæ ona usuniêta
+	(i np na nowo wpisana ju¿ w innym miejscu). Wtedy to wykrywane jest,
+	ze pod wska¼nikiem jest struktura o innych numerach major i minor
+	(gdy siê limit usuwa major, minor < 0) i nie pozostaje nic innego 
+	jak przejrzeæ ograniczenia od nowa. Operacje write i read poddane 
+	limitowaniu zosta³y zast±pione jedna do_iolimits() - tak gdy¿ 
+	obojêtne co limitujemy to limitujemy w taki sam sposób musz± 
+	byæ tylko podczepione odpowiednie wska¼niki. 
+		Operacje na readv czy writev generalnie niczym siê nie ró¿ni±
+	od read/write maja one jedynie wiêcej buforów z których trzeba
+	przekopiowaæ dane.
+
+

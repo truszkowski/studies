@@ -1,0 +1,56 @@
+.PU
+.TH watchfs "0.1"
+.SH NAZWA
+watchfs \- monitoruje zawartosc systemu plikow, 0.1
+.br
+
+.SH SKLADNIA
+.ll +8
+.B watchfs
+[
+.I "sciezka \& czas"
+]
+.ll -8
+.br
+
+.SH OPIS
+.I watchfs
+Monitoruje system plikow, program dziala w nieskonczonej 
+petli sprawdza co 
+.I "czas" 
+sekund zajetosc systemu plikow. 
+Raporty wkleja do pliku 
+.I "~/watchfs.log"
+. Wyjscie z programu 
+odbywa sie przez ctrl+C z konsoli czy tez zabicie procesu. 
+Jesli program napotkal przeszkody zasygnalizuje to wypisaniem 
+stosownego komunikatu na stderr i zakonczy prace.
+.br 
+	ERR_ENVFAIL     \- Bledne ustawienia zmiennych srodowskowych,
+.br 
+	ERR_OPENFAIL    \- Blad podczas otwierania pliku,
+.br 
+	ERR_WRITEFAIL   \- BLad podczas zapisu,
+.br 
+	ERR_CLOSEFAIL   \- Blad podczas zamykania,
+.br 
+	ERR_STATVFSFAIL \- Blad wywolania statvfs(),
+.br 
+	ERR_USAGEFAIL   \- Bledna liczba argumentow programu.
+.br
+Format pliku logow to:
+.br 
+	PLIK    DATA                      ZAJETOSC
+.br 
+	/home   Fri Nov 17 11:16:17 2006  20%
+	
+.SH OPCJE
+Program jest uruchamiany z dwoma argumentami i to sa jego 
+jedyne opcje. Pierwszy argument to sciezka do monitowanego 
+pliku, drugi to czas co jaki ma nastapowac monitowanie.
+
+.SH AUTOR
+Piotr Truszkowski (listopad 2006)
+
+.SH ZOBACZ TAKZE
+.BR monitor(8)
